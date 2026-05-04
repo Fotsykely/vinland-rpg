@@ -23,7 +23,7 @@ export default class GameScene extends Scene {
     preload() {
         super.preload()
         this.lia = this.maki.player('ash')
-        manager.map(this, 'default_map')
+        manager.map(this, 'brokeLand')
         manager.preload(this)
 
         this.load.spritesheet('dust', 'Tiny Swords (Free Pack)/Particle FX/Dust_02.png', {
@@ -36,9 +36,14 @@ export default class GameScene extends Scene {
         super.create()
         manager.create(this)
 
-        this.lia.sprite.setPosition(400, 400)
+        // brokeLand : 30×40 tiles × 64px = 1920×2560px — contenu à partir de la ligne 33
+        this.lia.sprite.setPosition(1056, 2300)
 
-        this.physics.add.collider(this.lia.sprite, manager.getWallGroup(this, 'default_map'))
+        this.physics.add.collider(this.lia.sprite, manager.getWallGroup(this, 'brokeLand'))
+
+        // Caméra qui suit le joueur dans les limites de la map
+        this.cameras.main.setBounds(0, 0, 30 * 64, 40 * 64)
+        this.cameras.main.startFollow(this.lia.sprite, true, 0.1, 0.1)
 
         this.anims.create({
             key: 'dust-anim',
