@@ -38,12 +38,21 @@ export default class GameScene extends Scene {
 
         // brokeLand : 30×40 tiles × 64px = 1920×2560px — contenu à partir de la ligne 33
         this.lia.sprite.setPosition(1056, 2300)
+        this.lia.sprite.setBodySize(16, 16)
+        this.lia.sprite.body.setOffset(8, 44)
 
         this.physics.add.collider(this.lia.sprite, manager.getWallGroup(this, 'brokeLand'))
 
         // Caméra qui suit le joueur dans les limites de la map
         this.cameras.main.setBounds(0, 0, 30 * 64, 40 * 64)
         this.cameras.main.startFollow(this.lia.sprite, true, 0.1, 0.1)
+
+        // Y-sort : les objets furniture reçoivent une profondeur fixe basée sur leur Y
+        this.children.list.forEach(child => {
+            if (child.depth === 1 && child.type === 'Image') {
+                child.setDepth(child.y)
+            }
+        })
 
         this.anims.create({
             key: 'dust-anim',
@@ -67,6 +76,9 @@ export default class GameScene extends Scene {
             this._playDust(this.lia.sprite.x, this.lia.sprite.y + 20)
         }
         this._wasMoving = moving
+
+        // Y-sort dynamique du joueur
+        this.lia.sprite.setDepth(this.lia.sprite.y)
 
         this.maki.move(this.lia)
     }
