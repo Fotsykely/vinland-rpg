@@ -1,6 +1,14 @@
 import { Scene, manager } from '@tialops/maki'
+import musicManager from '../managers/MusicManager.js'
 
 const WARRIOR_PATH = 'Tiny Swords (Free Pack)/Units/Blue Units/Warrior'
+const MAP_KEY = 'brokeLand'
+const PLAYER_START_X = 1056
+const PLAYER_START_Y = 2300
+const MAP_WIDTH = 30 * 64
+const MAP_HEIGHT = 40 * 64
+const BGM_KEY = 'game-bgm'
+const BGM_PATH = 'random/bg-music.mp3'
 
 export default class GameScene extends Scene {
     _getConfig() {
@@ -27,7 +35,7 @@ export default class GameScene extends Scene {
     preload() {
         super.preload()
         this.warrior = this.maki.player('warrior')
-        manager.map(this, 'brokeLand')
+        manager.map(this, MAP_KEY)
         manager.preload(this)
 
         this.load.spritesheet('warrior-idle-sheet', `${WARRIOR_PATH}/Warrior_Idle.png`, {
@@ -39,6 +47,10 @@ export default class GameScene extends Scene {
         this.load.spritesheet('dust', 'Tiny Swords (Free Pack)/Particle FX/Dust_02.png', {
             frameWidth: 64, frameHeight: 64
         })
+
+        musicManager.preload(this, [
+            { key: BGM_KEY, path: BGM_PATH }
+        ])
     }
 
     create() {
@@ -46,95 +58,132 @@ export default class GameScene extends Scene {
         manager.create(this)
 
         const s = this.warrior.sprite
-        s.setScale(0.5)                   // 192×192 → 96×96 display (~1.5 tiles)
-        s.setPosition(1056, 2300)
-        s.setBodySize(20, 20)             // hitbox in display-px — adjust with debug: true
-        s.body.setOffset(38, 67)          // center hitbox at feet (96*0.5=48 center, 96*0.8=77 feet)
+        this._setupPlayer(s)
+        this._setupWorld(s)
+        this._createAnimations()
+        this._setupAttackState(s)
+        this._setupMusic()
+        this._muteKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.M)
+        this._wasMoving = false
+    }
 
-        this.physics.add.collider(s, manager.getWallGroup(this, 'brokeLand'))
+    _setupMusic() {
+        musicManager.play(this, BGM_KEY, {
+            loop: true,
+            volume: 0.25
+        })
 
-        this.cameras.main.setBounds(0, 0, 30 * 64, 40 * 64)
-        this.cameras.main.startFollow(s, true, 0.1, 0.1)
+        this.events.once('shutdown', () => {
+            musicManager.stop(BGM_KEY)
+        })
+    }
+
+    _setupPlayer(sprite) {
+        sprite.setScale(0.5)
+        sprite.setPosition(PLAYER_START_X, PLAYER_START_Y)
+        sprite.setBodySize(20, 20)
+        sprite.body.setOffset(38, 67)
+    }
+
+    _setupWorld(sprite) {
+        this.physics.add.collider(sprite, manager.getWallGroup(this, MAP_KEY))
+        this.cameras.main.setBounds(0, 0, MAP_WIDTH, MAP_HEIGHT)
+        this.cameras.main.startFollow(sprite, true, 0.1, 0.1)
 
         this.children.list.forEach(child => {
             if (child.depth === 1 && child.type === 'Image') child.setDepth(child.y)
         })
+    }
 
+    _createAnimations() {
         this.anims.create({
             key: 'warrior-idle',
             frames: this.anims.generateFrameNumbers('warrior-idle-sheet', { start: 0, end: 7 }),
-            frameRate: 8, repeat: -1
+            frameRate: 8,
+            repeat: -1
         })
+
         this.anims.create({
             key: 'warrior-attack',
             frames: this.anims.generateFrameNumbers('warrior-attack-sheet', { start: 0, end: 3 }),
-            frameRate: 10, repeat: 0
-        })
-        this.anims.create({
-            key: 'dust-anim',
-            frames: this.anims.generateFrameNumbers('dust', { start: 0, end: 9 }),
-            frameRate: 12, repeat: 0
-        })
-
-        this._attacking = false
-        s.on('animationcomplete', (anim) => {
-            if (anim.key === 'warrior-attack') this._attacking = false
+            frameRate: 10,
+            repeat: 0
         })
     }
 
-    _playDust(x, y) {
-        const fx = this.add.sprite(x, y, 'dust').setDepth(2)
-        fx.play('dust-anim')
-        fx.on('animationcomplete', () => fx.destroy())
+    _setupAttackState(sprite) {
+        this._attacking = false
+        sprite.on('animationcomplete', (anim) => {
+            if (anim.key === 'warrior-attack') this._attacking = false
+        })
     }
 
     update() {
         const s = this.warrior.sprite
         const keys = this.warrior.keys
 
+        if (Phaser.Input.Keyboard.JustDown(this._muteKey)) {
+            musicManager.toggleMute()
+        }
+
         s.setDepth(s.y)
 
-        // Space → attack (blocks movement during swing)
-        if (Phaser.Input.Keyboard.JustDown(keys.space) && !this._attacking) {
-            this._attacking = true
-            s.anims.play('warrior-attack', true)
-            s.setVelocity(0)
-            return
-        }
+        if (this._tryStartAttack(s, keys)) return
         if (this._attacking) return
 
-        // Movement
-        const speed = this.warrior.speed
-        s.setVelocity(0)
-        let moving = false
-
-        if (keys.left.isDown) {
-            s.setVelocityX(-speed)
-            s.setFlipX(true)
-            s.anims.play('warrior-right', true)  // same frames, flipped
-            moving = true
-        } else if (keys.right.isDown) {
-            s.setVelocityX(speed)
-            s.setFlipX(false)
-            s.anims.play('warrior-right', true)
-            moving = true
-        } else if (keys.up.isDown) {
-            s.setVelocityY(-speed)
-            s.anims.play('warrior-right', true)
-            moving = true
-        } else if (keys.down.isDown) {
-            s.setVelocityY(speed)
-            s.anims.play('warrior-right', true)
-            moving = true
-        }
+        const moving = this._applyMovement(s, keys)
 
         if (!moving) {
             s.anims.play('warrior-idle', true)
         }
 
         if (moving && !this._wasMoving) {
-            this._playDust(s.x, s.y + 20)
+            // this._playDust(s.x, s.y + 20)
         }
         this._wasMoving = moving
+    }
+
+    _tryStartAttack(sprite, keys) {
+        if (!Phaser.Input.Keyboard.JustDown(keys.space) || this._attacking) {
+            return false
+        }
+
+        this._attacking = true
+        sprite.anims.play('warrior-attack', true)
+        sprite.setVelocity(0)
+        return true
+    }
+
+    _applyMovement(sprite, keys) {
+        const speed = this.warrior.speed
+        sprite.setVelocity(0)
+
+        if (keys.left.isDown) {
+            sprite.setVelocityX(-speed)
+            sprite.setFlipX(true)
+            sprite.anims.play('warrior-right', true)
+            return true
+        }
+
+        if (keys.right.isDown) {
+            sprite.setVelocityX(speed)
+            sprite.setFlipX(false)
+            sprite.anims.play('warrior-right', true)
+            return true
+        }
+
+        if (keys.up.isDown) {
+            sprite.setVelocityY(-speed)
+            sprite.anims.play('warrior-right', true)
+            return true
+        }
+
+        if (keys.down.isDown) {
+            sprite.setVelocityY(speed)
+            sprite.anims.play('warrior-right', true)
+            return true
+        }
+
+        return false
     }
 }
