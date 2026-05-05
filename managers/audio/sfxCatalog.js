@@ -7,7 +7,7 @@ const sfxCatalog = {
         ],
         attack: [
             // add attack sounds here, for example:
-            // { key: 'player-attack-1', path: 'audio/sfx/player/attack-1.wav', volume: 0.12 }
+            { key: 'player-attack-1', path: 'audio/sfx/player/attack/sonatina_letsadventure_1ATaleForTheJourney.wav', volume: 0.12 }
         ]
     },
     ui: {

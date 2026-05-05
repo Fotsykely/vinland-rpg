@@ -1,13 +1,22 @@
 import { Scene, manager } from '@tialops/maki'
 import musicManager from '../managers/audio/MusicManager.js'
 import sfxManager from '../managers/audio/SfxManager.js'
+import Lancer from '../entities/enemies/Lancer.js'
 
 const WARRIOR_PATH = 'Tiny Swords (Free Pack)/Units/Blue Units/Warrior'
+const LANCER_PATH = 'Tiny Swords (Free Pack)/Units/Red Units/Lancer'
 const MAP_KEY = 'brokeLand'
 const PLAYER_START_X = 1056
 const PLAYER_START_Y = 2300
+const LANCER_START_X = 1420
+const LANCER_START_Y = 2140
 const MAP_WIDTH = 30 * 64
 const MAP_HEIGHT = 40 * 64
+const UNIT_FRAME_WIDTH = 192
+const UNIT_FRAME_HEIGHT = 192
+const LANCER_DETECTION_RADIUS = 280
+const LANCER_STOP_DISTANCE = 56
+const LANCER_SPEED = 95
 const BGM_KEY = 'game-bgm'
 const BGM_PATH = 'audio/bgm/sonatina_letsadventure_1ATaleForTheJourney.wav'
 
@@ -40,10 +49,16 @@ export default class GameScene extends Scene {
         manager.preload(this)
 
         this.load.spritesheet('warrior-idle-sheet', `${WARRIOR_PATH}/Warrior_Idle.png`, {
-            frameWidth: 192, frameHeight: 192
+            frameWidth: UNIT_FRAME_WIDTH, frameHeight: UNIT_FRAME_HEIGHT
         })
         this.load.spritesheet('warrior-attack-sheet', `${WARRIOR_PATH}/Warrior_Attack1.png`, {
-            frameWidth: 192, frameHeight: 192
+            frameWidth: UNIT_FRAME_WIDTH, frameHeight: UNIT_FRAME_HEIGHT
+        })
+        this.load.spritesheet('lancer-idle-sheet', `${LANCER_PATH}/Lancer_Idle.png`, {
+            frameWidth: UNIT_FRAME_WIDTH, frameHeight: UNIT_FRAME_HEIGHT
+        })
+        this.load.spritesheet('lancer-run-sheet', `${LANCER_PATH}/Lancer_Run.png`, {
+            frameWidth: UNIT_FRAME_WIDTH, frameHeight: UNIT_FRAME_HEIGHT
         })
         this.load.spritesheet('dust', 'Tiny Swords (Free Pack)/Particle FX/Dust_02.png', {
             frameWidth: 64, frameHeight: 64
@@ -64,9 +79,34 @@ export default class GameScene extends Scene {
         this._setupWorld(s)
         this._createAnimations()
         this._setupAttackState(s)
+        this._setupLancer(s)
         this._setupMusic()
         this._muteKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.M)
         this._wasMoving = false
+    }
+
+    _setupLancer(targetSprite) {
+        const lancerSprite = this.physics.add.sprite(LANCER_START_X, LANCER_START_Y, 'lancer-idle-sheet')
+        lancerSprite.setScale(0.5)
+        lancerSprite.setOrigin(0.5, 1) 
+        lancerSprite.setBodySize(20, 20)
+        lancerSprite.body.setOffset(86, 152) 
+        lancerSprite.body.allowGravity = false
+
+        this.physics.add.collider(lancerSprite, manager.getWallGroup(this, MAP_KEY))
+
+        this.lancer = new Lancer(this, lancerSprite, {
+            maxLives: 4,
+            lives: 4,
+            moveSpeed: LANCER_SPEED,
+            detectionRadius: LANCER_DETECTION_RADIUS,
+            stopDistance: LANCER_STOP_DISTANCE,
+            target: targetSprite,
+            idleAnimKey: 'lancer-idle',
+            runAnimKey: 'lancer-run'
+        })
+
+        lancerSprite.anims.play('lancer-idle', true)
     }
 
     _setupMusic() {
@@ -98,18 +138,27 @@ export default class GameScene extends Scene {
     }
 
     _createAnimations() {
-        this.anims.create({
-            key: 'warrior-idle',
-            frames: this.anims.generateFrameNumbers('warrior-idle-sheet', { start: 0, end: 7 }),
-            frameRate: 8,
-            repeat: -1
-        })
+        this._createAnimationFromSheet('warrior-idle', 'warrior-idle-sheet', 8, -1)
+        this._createAnimationFromSheet('warrior-attack', 'warrior-attack-sheet', 10, 0)
+        this._createAnimationFromSheet('lancer-idle', 'lancer-idle-sheet', 8, -1)
+        this._createAnimationFromSheet('lancer-run', 'lancer-run-sheet', 10, -1)
+    }
+
+    _createAnimationFromSheet(key, sheetKey, frameRate, repeat) {
+        if (this.anims.exists(key) || !this.textures.exists(sheetKey)) {
+            return
+        }
+
+        const frameTotal = this.textures.get(sheetKey).frameTotal
+        if (!frameTotal || frameTotal < 1) {
+            return
+        }
 
         this.anims.create({
-            key: 'warrior-attack',
-            frames: this.anims.generateFrameNumbers('warrior-attack-sheet', { start: 0, end: 3 }),
-            frameRate: 10,
-            repeat: 0
+            key,
+            frames: this.anims.generateFrameNumbers(sheetKey, { start: 0, end: frameTotal - 1 }),
+            frameRate,
+            repeat
         })
     }
 
@@ -130,6 +179,7 @@ export default class GameScene extends Scene {
         }
 
         s.setDepth(s.y)
+        this.lancer?.update(s)
 
         if (this._tryStartAttack(s, keys)) return
         if (this._attacking) return
