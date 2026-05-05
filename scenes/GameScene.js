@@ -1,5 +1,6 @@
 import { Scene, manager } from '@tialops/maki'
-import musicManager from '../managers/MusicManager.js'
+import musicManager from '../managers/audio/MusicManager.js'
+import sfxManager from '../managers/audio/SfxManager.js'
 
 const WARRIOR_PATH = 'Tiny Swords (Free Pack)/Units/Blue Units/Warrior'
 const MAP_KEY = 'brokeLand'
@@ -8,7 +9,7 @@ const PLAYER_START_Y = 2300
 const MAP_WIDTH = 30 * 64
 const MAP_HEIGHT = 40 * 64
 const BGM_KEY = 'game-bgm'
-const BGM_PATH = 'audio/sonatina_letsadventure_1ATaleForTheJourney.wav'
+const BGM_PATH = 'audio/bgm/sonatina_letsadventure_1ATaleForTheJourney.wav'
 
 export default class GameScene extends Scene {
     _getConfig() {
@@ -51,6 +52,7 @@ export default class GameScene extends Scene {
         musicManager.preload(this, [
             { key: BGM_KEY, path: BGM_PATH }
         ])
+        sfxManager.preload(this)
     }
 
     create() {
@@ -70,7 +72,7 @@ export default class GameScene extends Scene {
     _setupMusic() {
         musicManager.play(this, BGM_KEY, {
             loop: true,
-            volume: 0.2
+            volume: 0.14
         })
 
         this.events.once('shutdown', () => {
@@ -124,6 +126,7 @@ export default class GameScene extends Scene {
 
         if (Phaser.Input.Keyboard.JustDown(this._muteKey)) {
             musicManager.toggleMute()
+            sfxManager.toggleMute()
         }
 
         s.setDepth(s.y)
@@ -138,6 +141,7 @@ export default class GameScene extends Scene {
         }
 
         if (moving && !this._wasMoving) {
+            sfxManager.play(this, 'player', 'walk')
             // this._playDust(s.x, s.y + 20)
         }
         this._wasMoving = moving
@@ -151,6 +155,7 @@ export default class GameScene extends Scene {
         this._attacking = true
         sprite.anims.play('warrior-attack', true)
         sprite.setVelocity(0)
+        sfxManager.play(this, 'player', 'attack')
         return true
     }
 

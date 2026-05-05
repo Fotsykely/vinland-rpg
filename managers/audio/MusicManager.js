@@ -2,6 +2,7 @@ class MusicManager {
     constructor() {
         this._tracks = new Map()
         this._muted = false
+        this._activeBgmKey = null
     }
 
     preload(scene, tracks) {
@@ -20,12 +21,13 @@ class MusicManager {
         const existing = this._tracks.get(key)
         if (existing) {
             if (!existing.isPlaying) existing.play()
+            this._activeBgmKey = key
             return existing
         }
 
         const sound = scene.sound.add(key, {
             loop: options.loop ?? true,
-            volume: options.volume ?? 0.4,
+            volume: this._clampVolume(options.volume ?? 0.4),
             rate: options.rate ?? 1,
             detune: options.detune ?? 0,
             mute: this._muted
@@ -33,9 +35,13 @@ class MusicManager {
 
         sound.play()
         this._tracks.set(key, sound)
+        this._activeBgmKey = key
 
         sound.once('destroy', () => {
             this._tracks.delete(key)
+            if (this._activeBgmKey === key) {
+                this._activeBgmKey = null
+            }
         })
 
         return sound
@@ -54,6 +60,13 @@ class MusicManager {
             sound.destroy()
         })
         this._tracks.clear()
+        this._activeBgmKey = null
+    }
+
+    stopBgm() {
+        if (this._activeBgmKey) {
+            this.stop(this._activeBgmKey)
+        }
     }
 
     setMuted(value) {
@@ -71,7 +84,18 @@ class MusicManager {
     setVolume(key, volume) {
         const sound = this._tracks.get(key)
         if (!sound) return
-        sound.setVolume(Phaser.Math.Clamp(volume, 0, 1))
+        sound.setVolume(this._clampVolume(volume))
+    }
+
+    setBgmVolume(volume) {
+        if (this._activeBgmKey) {
+            this.setVolume(this._activeBgmKey, volume)
+        }
+    }
+
+    _clampVolume(value) {
+        if (Number.isNaN(value)) return 0
+        return Math.max(0, Math.min(1, value))
     }
 }
 
