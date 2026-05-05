@@ -8,7 +8,7 @@ const PLAYER_START_Y = 2300
 const MAP_WIDTH = 30 * 64
 const MAP_HEIGHT = 40 * 64
 const BGM_KEY = 'game-bgm'
-const BGM_PATH = 'random/bg-music.mp3'
+const BGM_PATH = 'audio/sonatina_letsadventure_1ATaleForTheJourney.wav'
 
 export default class GameScene extends Scene {
     _getConfig() {
@@ -70,7 +70,7 @@ export default class GameScene extends Scene {
     _setupMusic() {
         musicManager.play(this, BGM_KEY, {
             loop: true,
-            volume: 0.25
+            volume: 0.2
         })
 
         this.events.once('shutdown', () => {
