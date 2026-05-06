@@ -8,6 +8,8 @@ export default class Lancer extends Enemy {
     }
 
     update(targetSprite) {
+        if (this._isHit) return
+
         if (targetSprite) {
             this.setTarget(targetSprite)
         }

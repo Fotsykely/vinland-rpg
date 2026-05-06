@@ -168,6 +168,7 @@ export default class GameScene extends Scene {
 
     _setupAttackState(sprite) {
         this._attacking = false
+        this._hitConnected = false
         sprite.on('animationcomplete', (anim) => {
             if (anim.key === 'warrior-attack') this._attacking = false
         })
@@ -184,6 +185,10 @@ export default class GameScene extends Scene {
 
         s.setDepth(s.y)
         this.lancer?.update(s)
+
+        if (this._attacking && !this._hitConnected) {
+            this._checkAttackHit(s)
+        }
 
         if (this._tryStartAttack(s, keys)) return
         if (this._attacking) return
@@ -207,6 +212,7 @@ export default class GameScene extends Scene {
         }
 
         this._attacking = true
+        this._hitConnected = false
         sprite.anims.play('warrior-attack', true)
         sprite.setVelocity(0)
         sfxManager.play(this, 'player', 'attack')
@@ -244,5 +250,20 @@ export default class GameScene extends Scene {
         }
 
         return false
+    }
+
+    _checkAttackHit(warriorSprite) {
+        if (!this.lancer?.isAlive()) return
+
+        const facing = warriorSprite.flipX ? -1 : 1
+        const hitX = warriorSprite.x + facing * 38
+        const hitY = warriorSprite.y
+
+        const dist = Math.hypot(hitX - this.lancer.sprite.x, hitY - this.lancer.sprite.y)
+        if (dist < 38) {
+            this._hitConnected = true
+            const knockVx = facing * 340
+            this.lancer.receiveHit(1, knockVx, -120)
+        }
     }
 }

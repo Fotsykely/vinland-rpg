@@ -5,6 +5,7 @@ export default class BaseCharacter {
         this.maxLives = options.maxLives ?? 3
         this.lives = options.lives ?? this.maxLives
         this.moveSpeed = options.moveSpeed ?? 100
+        this._isHit = false
     }
 
     isAlive() {
@@ -41,6 +42,37 @@ export default class BaseCharacter {
         const dx = targetSprite.x - this.sprite.x
         const dy = targetSprite.y - this.sprite.y
         return Math.hypot(dx, dy)
+    }
+
+    receiveHit(damage, knockVx, knockVy) {
+        if (this._isHit) return
+        this._isHit = true
+        this.takeDamage(damage)
+        this._flashWhite()
+        this._applyKnockback(knockVx, knockVy)
+        if (!this.isAlive()) this._onDeath()
+    }
+
+    _flashWhite() {
+        this.sprite.setTint(0xffffff).setTintMode(Phaser.TintModes.FILL)
+        this.scene.time.delayedCall(120, () => {
+            if (this.sprite?.active) this.sprite.clearTint()
+        })
+    }
+
+    _applyKnockback(vx, vy) {
+        this.sprite.setVelocity(vx, vy)
+        this.scene.time.delayedCall(250, () => {
+            if (this.sprite?.active) {
+                this.sprite.setVelocity(0, 0)
+                this._isHit = false
+            }
+        })
+    }
+
+    _onDeath() {
+        this.sprite.setActive(false).setVisible(false)
+        if (this.sprite.body) this.sprite.body.enable = false
     }
 
     moveToward(x, y) {
