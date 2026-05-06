@@ -5,11 +5,11 @@ import Lancer from '../entities/enemies/Lancer.js'
 
 const WARRIOR_PATH = 'Tiny Swords (Free Pack)/Units/Blue Units/Warrior'
 const LANCER_PATH = 'Tiny Swords (Free Pack)/Units/Red Units/Lancer'
-const MAP_KEY = 'brokeLand'
+const MAP_KEY = 'vinLand'
 const PLAYER_START_X = 1056
 const PLAYER_START_Y = 2300
-const LANCER_START_X = 1420
-const LANCER_START_Y = 2140
+const LANCER_START_X = 1168
+const LANCER_START_Y = 2000
 const MAP_WIDTH = 30 * 64
 const MAP_HEIGHT = 40 * 64
 const UNIT_FRAME_WIDTH = 192

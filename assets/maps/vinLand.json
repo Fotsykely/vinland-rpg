@@ -1,5 +1,5 @@
 {
-  "name": "brokeLand",
+  "name": "vinLand",
   "tileset": "assets/rooms/tiny_swords.png",
   "tileSize": 64,
   "mapWidth": 30,
@@ -1304,6 +1304,13 @@
       "y": 2192,
       "w": 48,
       "h": 32
+    },
+    {
+      "id": 1,
+      "x": 640,
+      "y": 2552,
+      "w": 1024,
+      "h": 8
     }
   ]
 }
