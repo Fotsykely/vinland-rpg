@@ -14,6 +14,8 @@ const MAP_WIDTH = 30 * 64
 const MAP_HEIGHT = 40 * 64
 const UNIT_FRAME_WIDTH = 192
 const UNIT_FRAME_HEIGHT = 192
+const LANCER_FRAME_WIDTH = 320
+const LANCER_FRAME_HEIGHT = 320
 const LANCER_DETECTION_RADIUS = 280
 const LANCER_STOP_DISTANCE = 56
 const LANCER_SPEED = 95
@@ -55,10 +57,10 @@ export default class GameScene extends Scene {
             frameWidth: UNIT_FRAME_WIDTH, frameHeight: UNIT_FRAME_HEIGHT
         })
         this.load.spritesheet('lancer-idle-sheet', `${LANCER_PATH}/Lancer_Idle.png`, {
-            frameWidth: UNIT_FRAME_WIDTH, frameHeight: UNIT_FRAME_HEIGHT
+            frameWidth: LANCER_FRAME_WIDTH, frameHeight: LANCER_FRAME_HEIGHT
         })
         this.load.spritesheet('lancer-run-sheet', `${LANCER_PATH}/Lancer_Run.png`, {
-            frameWidth: UNIT_FRAME_WIDTH, frameHeight: UNIT_FRAME_HEIGHT
+            frameWidth: LANCER_FRAME_WIDTH, frameHeight: LANCER_FRAME_HEIGHT
         })
         this.load.spritesheet('dust', 'Tiny Swords (Free Pack)/Particle FX/Dust_02.png', {
             frameWidth: 64, frameHeight: 64
@@ -88,9 +90,8 @@ export default class GameScene extends Scene {
     _setupLancer(targetSprite) {
         const lancerSprite = this.physics.add.sprite(LANCER_START_X, LANCER_START_Y, 'lancer-idle-sheet')
         lancerSprite.setScale(0.5)
-        lancerSprite.setOrigin(0.5, 1) 
         lancerSprite.setBodySize(20, 20)
-        lancerSprite.body.setOffset(86, 152) 
+        lancerSprite.body.setOffset(150, 210)
         lancerSprite.body.allowGravity = false
 
         this.physics.add.collider(lancerSprite, manager.getWallGroup(this, MAP_KEY))
@@ -140,11 +141,11 @@ export default class GameScene extends Scene {
     _createAnimations() {
         this._createAnimationFromSheet('warrior-idle', 'warrior-idle-sheet', 8, -1)
         this._createAnimationFromSheet('warrior-attack', 'warrior-attack-sheet', 10, 0)
-        this._createAnimationFromSheet('lancer-idle', 'lancer-idle-sheet', 8, -1)
+        this._createAnimationFromSheet('lancer-idle', 'lancer-idle-sheet', 12, -1)
         this._createAnimationFromSheet('lancer-run', 'lancer-run-sheet', 10, -1)
     }
 
-    _createAnimationFromSheet(key, sheetKey, frameRate, repeat) {
+    _createAnimationFromSheet(key, sheetKey, frameRate, repeat, frameStart = 0, frameEnd = null) {
         if (this.anims.exists(key) || !this.textures.exists(sheetKey)) {
             return
         }
@@ -156,7 +157,10 @@ export default class GameScene extends Scene {
 
         this.anims.create({
             key,
-            frames: this.anims.generateFrameNumbers(sheetKey, { start: 0, end: frameTotal - 1 }),
+            frames: this.anims.generateFrameNumbers(sheetKey, {
+                start: frameStart,
+                end: frameEnd ?? frameTotal - 1
+            }),
             frameRate,
             repeat
         })
