@@ -2,6 +2,7 @@ import { Scene, manager } from '@tialops/maki'
 import musicManager from '../managers/audio/MusicManager.js'
 import sfxManager from '../managers/audio/SfxManager.js'
 import Lancer from '../entities/enemies/Lancer.js'
+import Tree   from '../entities/environment/Tree.js'
 
 const WARRIOR_PATH = 'Tiny Swords (Free Pack)/Units/Blue Units/Warrior'
 const LANCER_PATH = 'Tiny Swords (Free Pack)/Units/Red Units/Lancer'
@@ -66,6 +67,8 @@ export default class GameScene extends Scene {
             frameWidth: 64, frameHeight: 64
         })
 
+        Tree.preload(this)
+
         musicManager.preload(this, [
             { key: BGM_KEY, path: BGM_PATH }
         ])
@@ -81,10 +84,28 @@ export default class GameScene extends Scene {
         this._setupWorld(s)
         this._createAnimations()
         this._setupAttackState(s)
+        this._setupTrees(s)
         this._setupLancer(s)
         this._setupMusic()
         this._muteKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.M)
         this._wasMoving = false
+    }
+
+    _setupTrees(warriorSprite) {
+        const positions = [
+            { x:  920, y: 2190 },
+            { x: 1210, y: 2170 },
+            { x:  1440, y: 955 },
+            { x: 1340, y: 2300 },
+            { x: 1060, y: 2460 },
+            { x:  980, y: 2400 },
+        ]
+        this.treeGroup = this.physics.add.staticGroup()
+        positions.forEach(({ x, y }) => {
+            const tree = new Tree(this, x, y, { debug: true })
+            this.treeGroup.add(tree.sprite)
+        })
+        this.physics.add.collider(warriorSprite, this.treeGroup)
     }
 
     _setupLancer(targetSprite) {
@@ -95,6 +116,7 @@ export default class GameScene extends Scene {
         lancerSprite.body.allowGravity = false
 
         this.physics.add.collider(lancerSprite, manager.getWallGroup(this, MAP_KEY))
+        this.physics.add.collider(lancerSprite, this.treeGroup)
 
         this.lancer = new Lancer(this, lancerSprite, {
             maxLives: 4,
@@ -139,6 +161,7 @@ export default class GameScene extends Scene {
     }
 
     _createAnimations() {
+        Tree.createAnimation(this)
         this._createAnimationFromSheet('warrior-idle', 'warrior-idle-sheet', 8, -1)
         this._createAnimationFromSheet('warrior-attack', 'warrior-attack-sheet', 10, 0)
         this._createAnimationFromSheet('lancer-idle', 'lancer-idle-sheet', 12, -1)
