@@ -1,3 +1,5 @@
+import collider from './tree.collider.json'
+
 const SHEET_KEY = 'tree1-sheet'
 const ANIM_KEY  = 'tree-sway'
 const ASSET_PATH = 'Tiny Swords (Free Pack)/Terrain/Resources/Wood/Trees/Tree1.png'
@@ -13,8 +15,8 @@ export default class Tree {
         this.sprite.setDepth(y)
         this.sprite.refreshBody()
         // refreshBody reset width/height → setSize doit être appelé après
-        this.sprite.body.setSize(14, 10, false)
-        this.sprite.body.setOffset(41, 108)
+        this.sprite.body.setSize(collider.bodyWidth, collider.bodyHeight, false)
+        this.sprite.body.setOffset(collider.bodyOffsetX, collider.bodyOffsetY)
         this.sprite.anims.play(ANIM_KEY, true)
         this._randomizeStart(scene)
         if (debug) this._drawDebugBody(scene)

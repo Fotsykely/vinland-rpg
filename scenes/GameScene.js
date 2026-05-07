@@ -93,16 +93,16 @@ export default class GameScene extends Scene {
 
     _setupTrees(warriorSprite) {
         const positions = [
-            { x:  920, y: 2190 },
+            { x:  664, y: 512 },
             { x: 1210, y: 2170 },
             { x:  1440, y: 955 },
-            { x: 1340, y: 2300 },
+            { x: 752, y: 1008 },
             { x: 1060, y: 2460 },
-            { x:  980, y: 2400 },
+            { x:  1130, y: 1360 },
         ]
         this.treeGroup = this.physics.add.staticGroup()
         positions.forEach(({ x, y }) => {
-            const tree = new Tree(this, x, y, { debug: true })
+            const tree = new Tree(this, x, y, { debug: false })
             this.treeGroup.add(tree.sprite)
         })
         this.physics.add.collider(warriorSprite, this.treeGroup)
