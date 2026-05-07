@@ -89,6 +89,9 @@ export default class GameScene extends Scene {
         this._setupMusic()
         this._muteKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.M)
         this._wasMoving = false
+
+        this.scene.launch('TutorialScene')
+        this.scene.pause()
     }
 
     _setupTrees(warriorSprite) {
