@@ -91,6 +91,7 @@ export default class GameScene extends Scene {
         this._wasMoving = false
 
         this._tutorialActive = true
+        this.game.events.once('tutorial-done', () => { this._tutorialActive = false })
         this.scene.launch('TutorialScene')
     }
 
