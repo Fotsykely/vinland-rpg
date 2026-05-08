@@ -75,7 +75,8 @@ export default class TutorialScene extends Phaser.Scene {
         })
 
         this.input.keyboard.once('keydown', () => {
-            this.scene.resume('GameScene')
+            const game = this.scene.get('GameScene')
+            if (game) game._tutorialActive = false
             this.scene.stop()
         })
     }

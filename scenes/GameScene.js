@@ -90,8 +90,8 @@ export default class GameScene extends Scene {
         this._muteKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.M)
         this._wasMoving = false
 
+        this._tutorialActive = true
         this.scene.launch('TutorialScene')
-        this.scene.pause()
     }
 
     _setupTrees(warriorSprite) {
@@ -201,6 +201,7 @@ export default class GameScene extends Scene {
     }
 
     update() {
+        if (this._tutorialActive) return
         const s = this.warrior.sprite
         const keys = this.warrior.keys
 
