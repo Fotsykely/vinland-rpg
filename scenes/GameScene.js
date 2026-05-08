@@ -20,8 +20,9 @@ const LANCER_FRAME_HEIGHT = 320
 const LANCER_DETECTION_RADIUS = 280
 const LANCER_STOP_DISTANCE = 56
 const LANCER_SPEED = 95
-const BGM_KEY = 'game-bgm'
-const BGM_PATH = 'audio/bgm/sonatina_letsadventure_1ATaleForTheJourney.wav'
+const BGM_KEY   = 'game-bgm'
+const BGM_PATH  = 'audio/bgm/sonatina_letsadventure_1ATaleForTheJourney.wav'
+const MAX_LIVES = 3
 
 export default class GameScene extends Scene {
     _getConfig() {
@@ -89,6 +90,10 @@ export default class GameScene extends Scene {
         this._setupMusic()
         this._muteKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.M)
         this._wasMoving = false
+
+        this._lives = MAX_LIVES
+        this.scene.launch('UIScene')
+        this.game.events.emit('player-health', this._lives)
 
         this._tutorialActive = true
         this.game.events.once('tutorial-done', () => { this._tutorialActive = false })
@@ -293,5 +298,11 @@ export default class GameScene extends Scene {
             const knockVx = facing * 340
             this.lancer.receiveHit(1, knockVx, -120)
         }
+    }
+
+    takeDamage() {
+        if (this._lives <= 0) return
+        this._lives--
+        this.game.events.emit('player-health', this._lives)
     }
 }
