@@ -22,7 +22,9 @@ const LANCER_STOP_DISTANCE = 56
 const LANCER_SPEED = 95
 const BGM_KEY   = 'game-bgm'
 const BGM_PATH  = 'audio/bgm/sonatina_letsadventure_1ATaleForTheJourney.wav'
-const MAX_LIVES = 3
+const MAX_LIVES        = 3
+const ATTACK_OFFSET    = 28   // px ahead of player center where attack hitbox is placed
+const ATTACK_RADIUS    = 24   // px radius of circular attack hitbox
 
 export default class GameScene extends Scene {
     _getConfig() {
@@ -91,6 +93,8 @@ export default class GameScene extends Scene {
         this._muteKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.M)
         this._wasMoving = false
 
+        this._attackRangeGfx = this.add.graphics()
+
         this._lives = MAX_LIVES
         this.scene.launch('UIScene')
         this.game.events.emit('player-health', this._lives)
@@ -128,8 +132,8 @@ export default class GameScene extends Scene {
         this.physics.add.collider(lancerSprite, this.treeGroup)
 
         this.lancer = new Lancer(this, lancerSprite, {
-            maxLives: 4,
-            lives: 4,
+            maxLives: 2,
+            lives: 2,
             moveSpeed: LANCER_SPEED,
             detectionRadius: LANCER_DETECTION_RADIUS,
             stopDistance: LANCER_STOP_DISTANCE,
@@ -199,10 +203,22 @@ export default class GameScene extends Scene {
     }
 
     _setupAttackState(sprite) {
-        this._attacking = false
-        this._hitConnected = false
+        this._attacking     = false
+        this._hitConnected  = false
+        this._hitWindow     = false
+
+        // Open hit window on frame 3+ (last ~half of the attack animation)
+        sprite.on('animationupdate', (anim, frame) => {
+            if (anim.key === 'warrior-attack' && frame.index >= 3) {
+                this._hitWindow = true
+            }
+        })
+
         sprite.on('animationcomplete', (anim) => {
-            if (anim.key === 'warrior-attack') this._attacking = false
+            if (anim.key === 'warrior-attack') {
+                this._attacking    = false
+                this._hitWindow    = false
+            }
         })
     }
 
@@ -217,9 +233,10 @@ export default class GameScene extends Scene {
         }
 
         s.setDepth(s.y)
+        // this._drawAttackRange(s)
         this.lancer?.update(s)
 
-        if (this._attacking && !this._hitConnected) {
+        if (this._attacking && this._hitWindow && !this._hitConnected) {
             this._checkAttackHit(s)
         }
 
@@ -244,8 +261,9 @@ export default class GameScene extends Scene {
             return false
         }
 
-        this._attacking = true
+        this._attacking    = true
         this._hitConnected = false
+        this._hitWindow    = false
         sprite.anims.play('warrior-attack', true)
         sprite.setVelocity(0)
         sfxManager.play(this, 'player', 'attack')
@@ -285,15 +303,32 @@ export default class GameScene extends Scene {
         return false
     }
 
+    _drawAttackRange(sprite) {
+        this._attackRangeGfx.clear()
+        if (!this._attacking) return
+        const facing = sprite.flipX ? -1 : 1
+        const hitX   = sprite.x + facing * ATTACK_OFFSET
+        const hitY   = sprite.y
+        // Orange = wind-up, red = hit window active
+        const color     = this._hitWindow ? 0xff2222 : 0xff8800
+        const fillAlpha = this._hitWindow ? 0.25     : 0.10
+        const lineAlpha = this._hitWindow ? 0.90     : 0.45
+        this._attackRangeGfx.setDepth(sprite.depth + 1)
+        this._attackRangeGfx.fillStyle(color, fillAlpha)
+        this._attackRangeGfx.fillCircle(hitX, hitY, ATTACK_RADIUS)
+        this._attackRangeGfx.lineStyle(1.5, color, lineAlpha)
+        this._attackRangeGfx.strokeCircle(hitX, hitY, ATTACK_RADIUS)
+    }
+
     _checkAttackHit(warriorSprite) {
         if (!this.lancer?.isAlive()) return
 
         const facing = warriorSprite.flipX ? -1 : 1
-        const hitX = warriorSprite.x + facing * 38
+        const hitX = warriorSprite.x + facing * ATTACK_OFFSET
         const hitY = warriorSprite.y
 
         const dist = Math.hypot(hitX - this.lancer.sprite.x, hitY - this.lancer.sprite.y)
-        if (dist < 38) {
+        if (dist < ATTACK_RADIUS) {
             this._hitConnected = true
             const knockVx = facing * 340
             this.lancer.receiveHit(1, knockVx, -120)
