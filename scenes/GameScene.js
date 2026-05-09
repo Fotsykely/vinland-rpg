@@ -5,7 +5,7 @@ import Lancer from '../entities/enemies/Lancer.js'
 import Tree   from '../entities/environment/Tree.js'
 
 const WARRIOR_PATH = 'Tiny Swords (Free Pack)/Units/Blue Units/Warrior'
-const LANCER_PATH = 'Tiny Swords (Free Pack)/Units/Red Units/Lancer'
+const LANCER_PATH = 'Tiny Swords (Free Pack)/Units/Black Units/Lancer'
 const MAP_KEY = 'vinLand'
 const PLAYER_START_X = 1056
 const PLAYER_START_Y = 2300
@@ -66,6 +66,11 @@ export default class GameScene extends Scene {
         this.load.spritesheet('lancer-run-sheet', `${LANCER_PATH}/Lancer_Run.png`, {
             frameWidth: LANCER_FRAME_WIDTH, frameHeight: LANCER_FRAME_HEIGHT
         })
+        for (const dir of ['Right', 'DownRight', 'Down', 'UpRight', 'Up']) {
+            this.load.spritesheet(`lancer-attack-${dir.toLowerCase()}-sheet`,
+                `${LANCER_PATH}/Lancer_${dir}_Attack.png`,
+                { frameWidth: LANCER_FRAME_WIDTH, frameHeight: LANCER_FRAME_HEIGHT })
+        }
         this.load.spritesheet('dust', 'Tiny Swords (Free Pack)/Particle FX/Dust_02.png', {
             frameWidth: 64, frameHeight: 64
         })
@@ -94,10 +99,15 @@ export default class GameScene extends Scene {
         this._wasMoving = false
 
         this._attackRangeGfx = this.add.graphics()
+        this._invincible = false
 
         this._lives = MAX_LIVES
         this.scene.launch('UIScene')
         this.game.events.emit('player-health', this._lives)
+        this.game.events.on('lancer-hit-player', this.takeDamage, this)
+        this.events.once('shutdown', () => {
+            this.game.events.off('lancer-hit-player', this.takeDamage, this)
+        })
 
         this._tutorialActive = true
         this.game.events.once('tutorial-done', () => { this._tutorialActive = false })
@@ -132,14 +142,21 @@ export default class GameScene extends Scene {
         this.physics.add.collider(lancerSprite, this.treeGroup)
 
         this.lancer = new Lancer(this, lancerSprite, {
-            maxLives: 2,
-            lives: 2,
+            maxLives: 12,
+            lives: 12,
             moveSpeed: LANCER_SPEED,
             detectionRadius: LANCER_DETECTION_RADIUS,
             stopDistance: LANCER_STOP_DISTANCE,
             target: targetSprite,
-            idleAnimKey: 'lancer-idle',
-            runAnimKey: 'lancer-run'
+            idleAnimKey:    'lancer-idle',
+            runAnimKey:     'lancer-run',
+            attackAnimKeys: {
+                right:     'lancer-attack-right',
+                downright: 'lancer-attack-downright',
+                down:      'lancer-attack-down',
+                upright:   'lancer-attack-upright',
+                up:        'lancer-attack-up',
+            }
         })
 
         lancerSprite.anims.play('lancer-idle', true)
@@ -177,8 +194,12 @@ export default class GameScene extends Scene {
         Tree.createAnimation(this)
         this._createAnimationFromSheet('warrior-idle', 'warrior-idle-sheet', 8, -1)
         this._createAnimationFromSheet('warrior-attack', 'warrior-attack-sheet', 10, 0)
-        this._createAnimationFromSheet('lancer-idle', 'lancer-idle-sheet', 12, -1)
-        this._createAnimationFromSheet('lancer-run', 'lancer-run-sheet', 10, -1)
+        this._createAnimationFromSheet('lancer-idle',   'lancer-idle-sheet',   12, -1)
+        this._createAnimationFromSheet('lancer-run',    'lancer-run-sheet',    10, -1)
+        for (const dir of ['right', 'downright', 'down', 'upright', 'up']) {
+            this._createAnimationFromSheet(
+                `lancer-attack-${dir}`, `lancer-attack-${dir}-sheet`, 8, 0)
+        }
     }
 
     _createAnimationFromSheet(key, sheetKey, frameRate, repeat, frameStart = 0, frameEnd = null) {
@@ -209,7 +230,7 @@ export default class GameScene extends Scene {
 
         // Open hit window on frame 3+ (last ~half of the attack animation)
         sprite.on('animationupdate', (anim, frame) => {
-            if (anim.key === 'warrior-attack' && frame.index >= 3) {
+            if (anim.key === 'warrior-attack' && frame.index >= 2) {
                 this._hitWindow = true
             }
         })
@@ -336,8 +357,10 @@ export default class GameScene extends Scene {
     }
 
     takeDamage() {
-        if (this._lives <= 0) return
+        if (this._lives <= 0 || this._invincible) return
         this._lives--
         this.game.events.emit('player-health', this._lives)
+        this._invincible = true
+        this.time.delayedCall(800, () => { this._invincible = false })
     }
 }
