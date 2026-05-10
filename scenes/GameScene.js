@@ -31,6 +31,20 @@ const COMBO_LUNGE_DURATION = 130  // ms
 const COMBO_WINDOW        = 650   // ms to press SPACE again after attack1
 const GUARD_COOLDOWN      = 1200  // ms
 const WAVE_DELAY       = 4000  // ms between waves
+const MEAT_PATH = 'Tiny Swords (Free Pack)/Terrain/Resources/Meat/Meat Resource/Meat Resource.png'
+const MEAT_COUNT = 4
+const MEAT_PICKUP_POINTS = [
+    // Corridor
+    { x: 1130, y: 2150 },
+    { x: 1240, y: 2440 },
+    { x:  960, y: 1900 },
+    // Upper area
+    { x:  680, y:  700 },
+    { x: 1450, y:  900 },
+    { x: 1050, y:  480 },
+    { x: 1620, y: 1100 },
+]
+
 const SPAWN_POINTS = [
     // Corridor (x: 960–1340, y: 1650–2540)
     { x: 1168, y: 2000 },
@@ -77,7 +91,9 @@ export default class GameScene extends Scene {
         this.load.image('tileset-tiny-swords', 'assets/rooms/tiny_swords.png')
         this.load.image('furn-monastery', 'Tiny Swords (Free Pack)/Buildings/Black Buildings/Monastery.png')
         this.load.image('furn-rock',      'Tiny Swords (Free Pack)/Terrain/Decorations/Rocks/Rock2.png')
+        this.load.image('tileset-bushes', 'Tiny Swords (Free Pack)/Terrain/Decorations/Bushes/Bushe1.png')
 
+        this.load.image('meat', MEAT_PATH)
         this.load.spritesheet('warrior-idle-sheet', `${WARRIOR_PATH}/Warrior_Idle.png`, {
             frameWidth: UNIT_FRAME_WIDTH, frameHeight: UNIT_FRAME_HEIGHT
         })
@@ -123,10 +139,11 @@ export default class GameScene extends Scene {
     create() {
         super.create()
 
-        const map    = this.make.tilemap({ key: MAP_KEY })
+        const map     = this.make.tilemap({ key: MAP_KEY })
         const tileset = map.addTilesetImage('tiny_swords', 'tileset-tiny-swords')
-        map.createLayer('floor',        tileset, 0, 0).setDepth(0)
-        map.createLayer('decorations',  tileset, 0, 0).setDepth(2)
+        const tsBushes = map.addTilesetImage('bushes_1', 'tileset-bushes')
+        map.createLayer('floor',       tileset,              0, 0).setDepth(0)
+        map.createLayer('decorations', [tileset, tsBushes],  0, 0).setDepth(2)
         this._map = map
 
         const s = this.warrior.sprite
@@ -136,6 +153,7 @@ export default class GameScene extends Scene {
         this._setupWater()
         this._setupAttackState(s)
         this._setupTrees(s)
+        this._setupMeatPickups(s)
         this._setupWaves(s)
         this._setupMusic()
         this._muteKey  = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.M)
@@ -216,6 +234,43 @@ export default class GameScene extends Scene {
         this.physics.add.collider(warriorSprite, this.treeGroup)
     }
 
+    _setupMeatPickups(playerSprite) {
+        this._meatGroup = this.physics.add.staticGroup()
+        // No initial spawn — meat appears only after first wave clear
+        this.physics.add.overlap(playerSprite, this._meatGroup, (_player, meat) => {
+            meat.destroy()
+            this._healPlayer()
+        })
+    }
+
+    _respawnMeat() {
+        this._meatGroup.clear(true, true)
+
+        // Hard cap: max 1 at full life, +1 per missing life, capped at 3
+        const maxCount = Math.min(MAX_LIVES - this._lives + (this._currentWave >= 3 ? 1 : 0), 3)
+        if (maxCount <= 0) return
+
+        // Low base prob — only generous at 1 life
+        const prob = this._lives === 1 ? 0.75 : 0.35
+
+        Phaser.Utils.Array.Shuffle([...MEAT_PICKUP_POINTS])
+            .slice(0, maxCount)
+            .forEach(({ x, y }) => {
+                if (Math.random() < prob) {
+                    const m = this._meatGroup.create(x, y, 'meat')
+                    m.setScale(0.6)
+                    m.setDepth(1)
+                    m.refreshBody()
+                }
+            })
+    }
+
+    _healPlayer() {
+        if (this._lives >= MAX_LIVES) return
+        this._lives++
+        this.game.events.emit('player-health', this._lives)
+    }
+
     _setupWaves(targetSprite) {
         this._enemies         = []
         this._currentWave     = 1
@@ -277,7 +332,10 @@ export default class GameScene extends Scene {
             this._wavePending = true
             this._enemies     = []
             this.game.events.emit('wave-clear', this._currentWave)
-            this.time.delayedCall(WAVE_DELAY, () => this._startNextWave())
+            this.time.delayedCall(WAVE_DELAY, () => {
+                this._respawnMeat()
+                this._startNextWave()
+            })
         }
     }
 
