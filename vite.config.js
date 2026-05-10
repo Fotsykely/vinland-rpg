@@ -46,6 +46,7 @@ const colliderPlugin = {
 }
 
 export default {
+    base:      './',
     publicDir: 'assets',
     plugins:   [colliderPlugin],
 }
