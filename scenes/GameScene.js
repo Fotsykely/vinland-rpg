@@ -23,8 +23,11 @@ const LANCER_SPEED = 95
 const BGM_KEY   = 'game-bgm'
 const BGM_PATH  = 'audio/bgm/sonatina_letsadventure_1ATaleForTheJourney.wav'
 const MAX_LIVES        = 3
-const ATTACK_OFFSET    = 28   // px ahead of player center where attack hitbox is placed
-const ATTACK_RADIUS    = 24   // px radius of circular attack hitbox
+const ATTACK_OFFSET    = 28 // px ahead of player center where attack hitbox is placed
+const ATTACK_RADIUS    = 24 // px radius of circular attack hitbox
+const DASH_SPEED       = 500  // px/s
+const DASH_DURATION    = 160  // ms
+const DASH_COOLDOWN    = 1000  // ms
 
 export default class GameScene extends Scene {
     _getConfig() {
@@ -95,8 +98,12 @@ export default class GameScene extends Scene {
         this._setupTrees(s)
         this._setupLancer(s)
         this._setupMusic()
-        this._muteKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.M)
-        this._wasMoving = false
+        this._muteKey  = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.M)
+        this._dashKey  = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT)
+        this._wasMoving  = false
+        this._dashing    = false
+        this._dashReady  = true
+        this._lastDir    = { x: 1, y: 0 }
 
         this._attackRangeGfx  = this.add.graphics()
         this._lancerRangeGfx  = this.add.graphics()
@@ -262,6 +269,13 @@ export default class GameScene extends Scene {
             this._checkAttackHit(s)
         }
 
+        if (this._dashing) return
+
+        if (Phaser.Input.Keyboard.JustDown(this._dashKey) && this._dashReady && !this._attacking) {
+            this._startDash(s)
+            return
+        }
+
         if (this._tryStartAttack(s, keys)) return
         if (this._attacking) return
 
@@ -300,6 +314,7 @@ export default class GameScene extends Scene {
             sprite.setVelocityX(-speed)
             sprite.setFlipX(true)
             sprite.anims.play('warrior-right', true)
+            this._lastDir = { x: -1, y: 0 }
             return true
         }
 
@@ -307,18 +322,21 @@ export default class GameScene extends Scene {
             sprite.setVelocityX(speed)
             sprite.setFlipX(false)
             sprite.anims.play('warrior-right', true)
+            this._lastDir = { x: 1, y: 0 }
             return true
         }
 
         if (keys.up.isDown) {
             sprite.setVelocityY(-speed)
             sprite.anims.play('warrior-right', true)
+            this._lastDir = { x: 0, y: -1 }
             return true
         }
 
         if (keys.down.isDown) {
             sprite.setVelocityY(speed)
             sprite.anims.play('warrior-right', true)
+            this._lastDir = { x: 0, y: 1 }
             return true
         }
 
@@ -385,6 +403,43 @@ export default class GameScene extends Scene {
             const knockVx = facing * 340
             this.lancer.receiveHit(1, knockVx, -120)
         }
+    }
+
+    _startDash(sprite) {
+        this._dashing    = true
+        this._dashReady  = false
+        this._invincible = true
+
+        sprite.setVelocity(
+            this._lastDir.x * DASH_SPEED,
+            this._lastDir.y * DASH_SPEED
+        )
+
+        // Afterimage trail
+        this.time.addEvent({
+            delay: 40, repeat: 3,
+            callback: () => this._spawnAfterimage(sprite),
+        })
+
+        this.time.delayedCall(DASH_DURATION, () => {
+            this._dashing    = false
+            this._invincible = false
+            sprite.setVelocity(0, 0)
+            this.time.delayedCall(DASH_COOLDOWN, () => { this._dashReady = true })
+        })
+    }
+
+    _spawnAfterimage(sprite) {
+        const ghost = this.add.image(sprite.x, sprite.y, sprite.texture.key, sprite.frame.name)
+        ghost.setScale(sprite.scaleX, sprite.scaleY)
+        ghost.setFlipX(sprite.flipX)
+        ghost.setDepth(sprite.depth - 1)
+        ghost.setAlpha(0.55)
+        ghost.setTint(0x6699ff)
+        this.tweens.add({
+            targets: ghost, alpha: 0, duration: 220,
+            onComplete: () => ghost.destroy(),
+        })
     }
 
     takeDamage() {
