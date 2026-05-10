@@ -1,6 +1,6 @@
 import Enemy from './Enemy.js'
 
-const ATTACK_COOLDOWN = 1400   // ms between attacks
+const ATTACK_COOLDOWN = 2000   // ms between attacks
 const ATTACK_RANGE    = 60     // px — triggers attack
 
 // Angle thresholds (radians) for direction snapping

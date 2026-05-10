@@ -361,6 +361,28 @@ export default class GameScene extends Scene {
         this._lives--
         this.game.events.emit('player-health', this._lives)
         this._invincible = true
-        this.time.delayedCall(800, () => { this._invincible = false })
+        this._applyPlayerHitEffect(this.warrior.sprite)
+        this.time.delayedCall(800, () => {
+            this._invincible = false
+            this.warrior.sprite.setVisible(true).clearTint()
+        })
+    }
+
+    _applyPlayerHitEffect(sprite) {
+        // Red flash
+        sprite.setTint(0xff3333)
+        this.time.delayedCall(120, () => { if (sprite.active) sprite.clearTint() })
+
+        // Camera shake
+        this.cameras.main.shake(220, 0.006)
+
+        // Flicker for the duration of invincibility
+        let visible = true
+        const flicker = this.time.addEvent({
+            delay:    80,
+            repeat:   8,
+            callback: () => { sprite.setVisible(visible = !visible) },
+        })
+        this.time.delayedCall(780, () => { flicker.remove() })
     }
 }
