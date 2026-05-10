@@ -2,7 +2,7 @@ import Enemy from './Enemy.js'
 
 const ATTACK_COOLDOWN = 2000   // ms between attacks
 const ATTACK_RANGE    = 60     // px — triggers attack
-const LANCE_REACH      = 42   // px from center to lance tip
+const LANCE_REACH      = 54   // px from center to lance tip
 const LANCE_HIT_RADIUS = 14   // px — capsule radius around the lance shaft
 
 // Angle thresholds (radians) for direction snapping
