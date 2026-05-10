@@ -15,6 +15,9 @@ export default class UIScene extends Phaser.Scene {
         if (!this.textures.exists('player-avatar')) {
             this.load.image('player-avatar', AVATAR_PATH)
         }
+        if (!this.textures.exists('arrow-icon')) {
+            this.load.image('arrow-icon', 'Tiny Swords (Free Pack)/UI Elements/UI Elements/Icons/Icon_08.png')
+        }
     }
 
     create() {
@@ -29,6 +32,17 @@ export default class UIScene extends Phaser.Scene {
             this._avatars.push(img)
         }
 
+        this._arrow = this.add.image(0, 0, 'arrow-icon').setScale(0.5).setVisible(false)
+        this.tweens.add({
+            targets:  this._arrow,
+            scaleX:   0.7,
+            scaleY:   0.7,
+            duration: 550,
+            yoyo:     true,
+            repeat:   -1,
+            ease:     'Sine.easeInOut',
+        })
+
         this._waveText = this.add.text(
             this.scale.width / 2, this.scale.height / 2 - 60, '',
             { fontSize: '36px', fontFamily: 'serif', color: '#f5d680', stroke: '#1a1a1a', strokeThickness: 5 }
@@ -37,10 +51,12 @@ export default class UIScene extends Phaser.Scene {
         this.game.events.on('player-health', this._onHealthChange, this)
         this.game.events.on('wave-start', this._onWaveStart, this)
         this.game.events.on('wave-clear', this._onWaveClear, this)
+        this.game.events.on('nearest-enemy', this._onNearestEnemy, this)
         this.events.once('shutdown', () => {
             this.game.events.off('player-health', this._onHealthChange, this)
             this.game.events.off('wave-start', this._onWaveStart, this)
             this.game.events.off('wave-clear', this._onWaveClear, this)
+            this.game.events.off('nearest-enemy', this._onNearestEnemy, this)
         })
     }
 
@@ -56,6 +72,33 @@ export default class UIScene extends Phaser.Scene {
 
     _onWaveStart(wave) { this._showWaveText(`WAVE  ${wave}`) }
     _onWaveClear()     { this._showWaveText('CLEARED !') }
+
+    _onNearestEnemy(data) {
+        if (!data || data.inView) {
+            this._arrow.setVisible(false)
+            return
+        }
+
+        const W  = this.scale.width
+        const H  = this.scale.height
+        const cx = W / 2
+        const cy = H / 2
+        const dx = data.sx - cx
+        const dy = data.sy - cy
+
+        // Find where the direction ray exits the screen rectangle (with margin)
+        const margin = 52
+        const hw = cx - margin
+        const hh = cy - margin
+        const tx = hw / (Math.abs(dx) || 0.001)
+        const ty = hh / (Math.abs(dy) || 0.001)
+        const t  = Math.min(tx, ty)
+
+        this._arrow
+            .setPosition(cx + dx * t, cy + dy * t)
+            .setRotation(Math.atan2(dy, dx) + Math.PI)
+            .setVisible(true)
+    }
 
     _onHealthChange(lives) {
         this._avatars.forEach((img, i) => {

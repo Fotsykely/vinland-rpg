@@ -305,6 +305,7 @@ export default class GameScene extends Scene {
         s.setDepth(s.y)
         this._enemies.forEach(e => e.update(s))
         this._checkWaveClear()
+        this._emitNearestEnemyDir(s)
         // this._drawLancerRange()
 
         if (this._attacking && this._hitWindow && !this._hitConnected) {
@@ -475,6 +476,24 @@ export default class GameScene extends Scene {
             targets: ghost, alpha: 0, duration: 220,
             onComplete: () => ghost.destroy(),
         })
+    }
+
+    _emitNearestEnemyDir(playerSprite) {
+        const alive = this._enemies.filter(e => e.isAlive())
+        if (alive.length === 0) {
+            this.game.events.emit('nearest-enemy', null)
+            return
+        }
+        const nearest = alive.reduce((best, e) => {
+            const d = Math.hypot(e.sprite.x - playerSprite.x, e.sprite.y - playerSprite.y)
+            return d < best.d ? { e, d } : best
+        }, { e: null, d: Infinity }).e
+
+        const cam = this.cameras.main
+        const sx = nearest.sprite.x - cam.scrollX
+        const sy = nearest.sprite.y - cam.scrollY
+        const inView = sx >= 0 && sx <= cam.width && sy >= 0 && sy <= cam.height
+        this.game.events.emit('nearest-enemy', { sx, sy, inView })
     }
 
     takeDamage() {
