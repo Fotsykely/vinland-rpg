@@ -52,11 +52,13 @@ export default class UIScene extends Phaser.Scene {
         this.game.events.on('wave-start', this._onWaveStart, this)
         this.game.events.on('wave-clear', this._onWaveClear, this)
         this.game.events.on('nearest-enemy', this._onNearestEnemy, this)
+        this.game.events.once('game-over', this._onGameOver, this)
         this.events.once('shutdown', () => {
             this.game.events.off('player-health', this._onHealthChange, this)
             this.game.events.off('wave-start', this._onWaveStart, this)
             this.game.events.off('wave-clear', this._onWaveClear, this)
             this.game.events.off('nearest-enemy', this._onNearestEnemy, this)
+            this.game.events.off('game-over', this._onGameOver, this)
         })
     }
 
@@ -67,6 +69,42 @@ export default class UIScene extends Phaser.Scene {
             targets: this._waveText, alpha: 0,
             delay: 1400, duration: 600,
             ease: 'Sine.easeIn',
+        })
+    }
+
+    _onGameOver() {
+        const W = this.scale.width
+        const H = this.scale.height
+
+        const overlay = this.add.graphics()
+        overlay.fillStyle(0x000000, 0.78)
+        overlay.fillRect(0, 0, W, H)
+
+        this.add.text(W / 2, H / 2 - 36, 'GAME OVER', {
+            fontSize: '52px',
+            fontFamily: 'serif',
+            color: '#cc2222',
+            stroke: '#000000',
+            strokeThickness: 7,
+        }).setOrigin(0.5)
+
+        const prompt = this.add.text(W / 2, H / 2 + 44, 'Press any key to restart', {
+            fontSize: '18px',
+            fontFamily: 'serif',
+            color: '#aaaaaa',
+        }).setOrigin(0.5)
+
+        this.tweens.add({
+            targets: prompt, alpha: 0.1,
+            duration: 650, yoyo: true, repeat: -1,
+            ease: 'Sine.easeInOut',
+        })
+
+        // Short delay so the death-frame key doesn't instantly restart
+        this.time.delayedCall(600, () => {
+            this.input.keyboard.once('keydown', () => {
+                this.game.events.emit('game-over-restart')
+            })
         })
     }
 

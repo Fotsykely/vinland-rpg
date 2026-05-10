@@ -147,6 +147,12 @@ export default class GameScene extends Scene {
             this.game.events.off('lancer-hit-player', this.takeDamage, this)
         })
 
+        this._gameOver = false
+        this.game.events.once('game-over-restart', () => {
+            this.scene.stop('UIScene')
+            this.scene.restart()
+        })
+
         this._tutorialActive = true
         this.game.events.once('tutorial-done', () => { this._tutorialActive = false })
         this.scene.launch('TutorialScene')
@@ -325,7 +331,7 @@ export default class GameScene extends Scene {
     }
 
     update() {
-        if (this._tutorialActive) return
+        if (this._tutorialActive || this._gameOver) return
         const s = this.warrior.sprite
         const keys = this.warrior.keys
 
@@ -582,6 +588,14 @@ export default class GameScene extends Scene {
         this._inCombo = false
         this._lives--
         this.game.events.emit('player-health', this._lives)
+
+        if (this._lives <= 0) {
+            this._gameOver = true
+            this._applyPlayerHitEffect(this.warrior.sprite)
+            this.time.delayedCall(800, () => this.game.events.emit('game-over'))
+            return
+        }
+
         this._invincible = true
         this._applyPlayerHitEffect(this.warrior.sprite)
         this.time.delayedCall(800, () => {
