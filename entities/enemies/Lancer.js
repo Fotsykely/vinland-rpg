@@ -125,7 +125,7 @@ export default class Lancer extends Enemy {
         if (this._distToSegment(this.target.x, this.target.y,
                 this.sprite.x, this.sprite.y, tipX, tipY) <= LANCE_HIT_RADIUS) {
             this._damageDone = true
-            this.scene.game.events.emit('lancer-hit-player')
+            this.scene.game.events.emit('lancer-hit-player', this)
         }
     }
 

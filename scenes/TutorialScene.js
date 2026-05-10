@@ -36,9 +36,9 @@ export default class TutorialScene extends Phaser.Scene {
         const cx = width / 2
         const cy = height / 2
 
-        this._buildPanel(cx, cy, 400, 300)
+        this._buildPanel(cx, cy, 420, 370)
 
-        this.add.text(cx, cy - 100, 'CONTROLS', {
+        this.add.text(cx, cy - 145, 'CONTROLS', {
             fontSize: '22px',
             fontFamily: 'serif',
             color: '#f5d680',
@@ -48,11 +48,13 @@ export default class TutorialScene extends Phaser.Scene {
 
         const entries = [
             ['↑  ↓  ←  →',  'Move'],
-            ['SPACE',       'Attack'],
-            ['SHIFT',       'Dash'],
+            ['SPACE',        'Attack'],
+            ['SPACE  ×2',    'Combo'],
+            ['SHIFT',        'Dash'],
+            ['E',            'Guard / Parry'],
         ]
         entries.forEach(([key, action], i) => {
-            const y = cy + i * 50
+            const y = cy - 85 + i * 48
             this.add.text(cx - 16, y, key, {
                 fontSize: '20px',
                 fontFamily: 'monospace',

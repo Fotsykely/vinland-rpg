@@ -23,9 +23,13 @@ const BGM_PATH  = 'audio/bgm/sonatina_letsadventure_1ATaleForTheJourney.wav'
 const MAX_LIVES        = 3
 const ATTACK_OFFSET    = 28 // px ahead of player center where attack hitbox is placed
 const ATTACK_RADIUS    = 24 // px radius of circular attack hitbox
-const DASH_SPEED       = 500  // px/s
-const DASH_DURATION    = 160  // ms
-const DASH_COOLDOWN    = 1000  // ms
+const DASH_SPEED          = 500   // px/s
+const DASH_DURATION       = 160   // ms
+const DASH_COOLDOWN       = 1000  // ms
+const COMBO_LUNGE_SPEED   = 220   // px/s forward push on combo
+const COMBO_LUNGE_DURATION = 130  // ms
+const COMBO_WINDOW        = 650   // ms to press SPACE again after attack1
+const GUARD_COOLDOWN      = 1200  // ms
 const WAVE_DELAY       = 4000  // ms between waves
 const SPAWN_POINTS = [
     // Corridor (x: 960–1340, y: 1650–2540)
@@ -77,6 +81,12 @@ export default class GameScene extends Scene {
         this.load.spritesheet('warrior-attack-sheet', `${WARRIOR_PATH}/Warrior_Attack1.png`, {
             frameWidth: UNIT_FRAME_WIDTH, frameHeight: UNIT_FRAME_HEIGHT
         })
+        this.load.spritesheet('warrior-attack2-sheet', `${WARRIOR_PATH}/Warrior_Attack2.png`, {
+            frameWidth: UNIT_FRAME_WIDTH, frameHeight: UNIT_FRAME_HEIGHT
+        })
+        this.load.spritesheet('warrior-guard-sheet', `${WARRIOR_PATH}/Warrior_Guard.png`, {
+            frameWidth: UNIT_FRAME_WIDTH, frameHeight: UNIT_FRAME_HEIGHT
+        })
         this.load.spritesheet('lancer-idle-sheet', `${LANCER_PATH}/Lancer_Idle.png`, {
             frameWidth: LANCER_FRAME_WIDTH, frameHeight: LANCER_FRAME_HEIGHT
         })
@@ -114,10 +124,16 @@ export default class GameScene extends Scene {
         this._setupMusic()
         this._muteKey  = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.M)
         this._dashKey  = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT)
+        this._guardKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E)
         this._wasMoving  = false
         this._dashing    = false
         this._dashReady  = true
         this._lastDir    = { x: 1, y: 0 }
+        this._guarding   = false
+        this._guardReady = true
+        this._comboReady = false
+        this._comboTimer = null
+        this._inCombo    = false
 
         this._attackRangeGfx  = this.add.graphics()
         this._lancerRangeGfx  = this.add.graphics()
@@ -241,8 +257,10 @@ export default class GameScene extends Scene {
 
     _createAnimations() {
         Tree.createAnimation(this)
-        this._createAnimationFromSheet('warrior-idle', 'warrior-idle-sheet', 8, -1)
-        this._createAnimationFromSheet('warrior-attack', 'warrior-attack-sheet', 10, 0)
+        this._createAnimationFromSheet('warrior-idle',    'warrior-idle-sheet',    8,  -1)
+        this._createAnimationFromSheet('warrior-attack',  'warrior-attack-sheet',  10,  0)
+        this._createAnimationFromSheet('warrior-attack2', 'warrior-attack2-sheet', 10,  0)
+        this._createAnimationFromSheet('warrior-guard',   'warrior-guard-sheet',   10,  0)
         this._createAnimationFromSheet('lancer-idle',   'lancer-idle-sheet',   12, -1)
         this._createAnimationFromSheet('lancer-run',    'lancer-run-sheet',    10, -1)
         for (const dir of ['right', 'downright', 'down', 'upright', 'up']) {
@@ -277,17 +295,31 @@ export default class GameScene extends Scene {
         this._hitConnected  = false
         this._hitWindow     = false
 
-        // Open hit window on frame 3+ (last ~half of the attack animation)
         sprite.on('animationupdate', (anim, frame) => {
-            if (anim.key === 'warrior-attack' && frame.index >= 2) {
+            if ((anim.key === 'warrior-attack' || anim.key === 'warrior-attack2') && frame.index >= 2) {
                 this._hitWindow = true
             }
         })
 
         sprite.on('animationcomplete', (anim) => {
             if (anim.key === 'warrior-attack') {
-                this._attacking    = false
-                this._hitWindow    = false
+                this._attacking  = false
+                this._hitWindow  = false
+                // Open combo window
+                this._comboReady = true
+                this._comboTimer = this.time.delayedCall(COMBO_WINDOW, () => {
+                    this._comboReady = false
+                })
+            }
+            if (anim.key === 'warrior-attack2') {
+                this._attacking  = false
+                this._hitWindow  = false
+                this._inCombo    = false
+                this._comboReady = false
+            }
+            if (anim.key === 'warrior-guard') {
+                this._guarding = false
+                this.time.delayedCall(GUARD_COOLDOWN, () => { this._guardReady = true })
             }
         })
     }
@@ -313,9 +345,15 @@ export default class GameScene extends Scene {
         }
 
         if (this._dashing) return
+        if (this._guarding) return
 
         if (Phaser.Input.Keyboard.JustDown(this._dashKey) && this._dashReady && !this._attacking) {
             this._startDash(s)
+            return
+        }
+
+        if (Phaser.Input.Keyboard.JustDown(this._guardKey) && this._guardReady && !this._attacking) {
+            this._startGuard(s)
             return
         }
 
@@ -338,6 +376,23 @@ export default class GameScene extends Scene {
     _tryStartAttack(sprite, keys) {
         if (!Phaser.Input.Keyboard.JustDown(keys.space) || this._attacking) {
             return false
+        }
+
+        if (this._comboReady) {
+            this._comboTimer?.remove()
+            this._comboReady   = false
+            this._inCombo      = true
+            this._attacking    = true
+            this._hitConnected = false
+            this._hitWindow    = false
+            sprite.anims.play('warrior-attack2', true)
+            sprite.setVelocity(
+                this._lastDir.x * COMBO_LUNGE_SPEED,
+                this._lastDir.y * COMBO_LUNGE_SPEED
+            )
+            this.time.delayedCall(COMBO_LUNGE_DURATION, () => { sprite.setVelocity(0) })
+            sfxManager.play(this, 'player', 'attack')
+            return true
         }
 
         this._attacking    = true
@@ -496,8 +551,35 @@ export default class GameScene extends Scene {
         this.game.events.emit('nearest-enemy', { sx, sy, inView })
     }
 
-    takeDamage() {
+    _startGuard(sprite) {
+        this._guarding   = true
+        this._guardReady = false
+        sprite.anims.play('warrior-guard', true)
+        sprite.setVelocity(0)
+    }
+
+    _applyParryEffect(attacker) {
+        const sprite = this.warrior.sprite
+        sprite.setTint(0xffffff)
+        this.time.delayedCall(180, () => { if (sprite.active) sprite.clearTint() })
+        this.cameras.main.shake(100, 0.003)
+        if (attacker) {
+            const knockVx = attacker.sprite.x >= sprite.x ? 360 : -360
+            attacker.receiveHit(1, knockVx, -90)
+        }
+    }
+
+    takeDamage(attacker) {
         if (this._lives <= 0 || this._invincible) return
+
+        if (this._guarding) {
+            this._applyParryEffect(attacker)
+            return
+        }
+
+        this._comboReady = false
+        this._comboTimer?.remove()
+        this._inCombo = false
         this._lives--
         this.game.events.emit('player-health', this._lives)
         this._invincible = true
