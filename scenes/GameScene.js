@@ -27,14 +27,20 @@ const DASH_SPEED       = 500  // px/s
 const DASH_DURATION    = 160  // ms
 const DASH_COOLDOWN    = 1000  // ms
 const WAVE_DELAY       = 4000  // ms between waves
-// All points inside the corridor (x: 960–1340, y: 1650–2540)
 const SPAWN_POINTS = [
-    { x: 1168, y: 2000 },  // north
-    { x: 1050, y: 1870 },  // far north
-    { x: 1290, y: 2020 },  // north-east
-    { x:  990, y: 2020 },  // north-west
-    { x: 1270, y: 2360 },  // south-east
-    { x:  990, y: 2440 },  // south
+    // Corridor (x: 960–1340, y: 1650–2540)
+    { x: 1168, y: 2000 },
+    { x: 1050, y: 1870 },
+    { x: 1290, y: 2020 },
+    { x:  990, y: 2020 },
+    { x: 1270, y: 2360 },
+    { x:  990, y: 2440 },
+    // Upper area (x: 420–1800, y: 120–1480) — avoids monastery at (1568,104)
+    { x:  600, y:  380 },
+    { x: 1700, y:  500 },
+    { x:  720, y: 1000 },
+    { x: 1500, y: 1050 },
+    { x: 1100, y:  650 },
 ]
 
 export default class GameScene extends Scene {
