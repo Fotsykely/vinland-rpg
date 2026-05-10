@@ -48,16 +48,24 @@ export default class UIScene extends Phaser.Scene {
             { fontSize: '36px', fontFamily: 'serif', color: '#f5d680', stroke: '#1a1a1a', strokeThickness: 5 }
         ).setOrigin(0.5).setAlpha(0)
 
+        this._enemyCountText = this.add.text(
+            this.scale.width - PAD, PAD,
+            '',
+            { fontSize: '18px', fontFamily: 'serif', color: '#f5d680', stroke: '#1a1a1a', strokeThickness: 3 }
+        ).setOrigin(1, 0)
+
         this.game.events.on('player-health', this._onHealthChange, this)
         this.game.events.on('wave-start', this._onWaveStart, this)
         this.game.events.on('wave-clear', this._onWaveClear, this)
         this.game.events.on('nearest-enemy', this._onNearestEnemy, this)
+        this.game.events.on('enemy-count', this._onEnemyCount, this)
         this.game.events.once('game-over', this._onGameOver, this)
         this.events.once('shutdown', () => {
             this.game.events.off('player-health', this._onHealthChange, this)
             this.game.events.off('wave-start', this._onWaveStart, this)
             this.game.events.off('wave-clear', this._onWaveClear, this)
             this.game.events.off('nearest-enemy', this._onNearestEnemy, this)
+            this.game.events.off('enemy-count', this._onEnemyCount, this)
             this.game.events.off('game-over', this._onGameOver, this)
         })
     }
@@ -108,6 +116,7 @@ export default class UIScene extends Phaser.Scene {
         })
     }
 
+    _onEnemyCount(n)   { this._enemyCountText.setText(`⚔ ${n}`) }
     _onWaveStart(wave) { this._showWaveText(`WAVE  ${wave}`) }
     _onWaveClear()     { this._showWaveText('CLEARED !') }
 

@@ -210,10 +210,11 @@ export default class GameScene extends Scene {
     }
 
     _setupWaves(targetSprite) {
-        this._enemies      = []
-        this._currentWave  = 0
-        this._waveActive   = false
-        this._wavePending  = false
+        this._enemies         = []
+        this._currentWave     = 0
+        this._waveActive      = false
+        this._wavePending     = false
+        this._lastEnemyCount  = 0
         this._waveTarget   = targetSprite
         this._startNextWave()
     }
@@ -226,6 +227,7 @@ export default class GameScene extends Scene {
         const points = Phaser.Utils.Array.Shuffle([...SPAWN_POINTS]).slice(0, count)
         points.forEach(({ x, y }) => this._spawnEnemy(x, y))
         this.game.events.emit('wave-start', this._currentWave)
+        this.game.events.emit('enemy-count', this._enemies.length)
     }
 
     _spawnEnemy(x, y) {
@@ -258,13 +260,22 @@ export default class GameScene extends Scene {
 
     _checkWaveClear() {
         if (!this._waveActive || this._wavePending || this._enemies.length === 0) return
-        if (this._enemies.every(e => !e.isAlive())) {
+        const alive = this._enemies.filter(e => e.isAlive()).length
+        if (alive !== this._lastEnemyCount) {
+            this._lastEnemyCount = alive
+            this.game.events.emit('enemy-count', alive)
+        }
+        if (alive === 0) {
             this._waveActive  = false
             this._wavePending = true
             this._enemies     = []
             this.game.events.emit('wave-clear', this._currentWave)
             this.time.delayedCall(WAVE_DELAY, () => this._startNextWave())
         }
+    }
+
+    _getEnemyCount() {
+        return this._enemies.filter(e => e.isAlive()).length
     }
 
     _setupMusic() {
