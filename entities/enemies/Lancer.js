@@ -2,6 +2,8 @@ import Enemy from './Enemy.js'
 
 const ATTACK_COOLDOWN = 2000   // ms between attacks
 const ATTACK_RANGE    = 60     // px — triggers attack
+const LANCE_REACH      = 42   // px from center to lance tip
+const LANCE_HIT_RADIUS = 14   // px — capsule radius around the lance shaft
 
 // Angle thresholds (radians) for direction snapping
 const D22 = Math.PI / 8        // 22.5°
@@ -23,6 +25,7 @@ export default class Lancer extends Enemy {
         this._attackState       = 'idle'   // 'idle' | 'attacking' | 'cooldown'
         this._damageDone        = false
         this._currentAttackAnim = null
+        this._attackAngle       = 0
 
         sprite.on('animationcomplete', (anim) => {
             if (anim.key !== this._currentAttackAnim) return
@@ -64,6 +67,11 @@ export default class Lancer extends Enemy {
         this.updateDepth()
     }
 
+    isAttacking()    { return this._attackState === 'attacking' }
+    get attackAngle()  { return this._attackAngle }
+    get lanceReach()   { return LANCE_REACH }
+    get lanceHitRadius() { return LANCE_HIT_RADIUS }
+
     receiveHit(damage, knockVx, knockVy) {
         this._attackState       = 'idle'
         this._damageDone        = false
@@ -101,6 +109,10 @@ export default class Lancer extends Enemy {
         this._attackState       = 'attacking'
         this._damageDone        = false
         this._currentAttackAnim = key
+        this._attackAngle       = Math.atan2(
+            this.target.y - this.sprite.y,
+            this.target.x - this.sprite.x
+        )
         this.stop()
         this.sprite.setFlipX(flipX)
         this.sprite.anims.play(key, true)
@@ -108,11 +120,22 @@ export default class Lancer extends Enemy {
 
     _tryDealDamage() {
         if (this._damageDone || !this.target) return
-        const dist = this.getDistanceTo(this.target)
-        if (dist <= ATTACK_RANGE * 1.4) {
+        const tipX = this.sprite.x + Math.cos(this._attackAngle) * LANCE_REACH
+        const tipY = this.sprite.y + Math.sin(this._attackAngle) * LANCE_REACH
+        if (this._distToSegment(this.target.x, this.target.y,
+                this.sprite.x, this.sprite.y, tipX, tipY) <= LANCE_HIT_RADIUS) {
             this._damageDone = true
             this.scene.game.events.emit('lancer-hit-player')
         }
+    }
+
+    // Distance from point (px,py) to segment (ax,ay)→(bx,by)
+    _distToSegment(px, py, ax, ay, bx, by) {
+        const dx = bx - ax, dy = by - ay
+        const lenSq = dx * dx + dy * dy
+        if (lenSq === 0) return Math.hypot(px - ax, py - ay)
+        const t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / lenSq))
+        return Math.hypot(px - (ax + t * dx), py - (ay + t * dy))
     }
 
     // ── Animations ────────────────────────────────────────────────────────────

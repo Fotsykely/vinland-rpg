@@ -98,7 +98,8 @@ export default class GameScene extends Scene {
         this._muteKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.M)
         this._wasMoving = false
 
-        this._attackRangeGfx = this.add.graphics()
+        this._attackRangeGfx  = this.add.graphics()
+        this._lancerRangeGfx  = this.add.graphics()
         this._invincible = false
 
         this._lives = MAX_LIVES
@@ -142,8 +143,8 @@ export default class GameScene extends Scene {
         this.physics.add.collider(lancerSprite, this.treeGroup)
 
         this.lancer = new Lancer(this, lancerSprite, {
-            maxLives: 12,
-            lives: 12,
+            maxLives: 2,
+            lives: 2,
             moveSpeed: LANCER_SPEED,
             detectionRadius: LANCER_DETECTION_RADIUS,
             stopDistance: LANCER_STOP_DISTANCE,
@@ -254,8 +255,8 @@ export default class GameScene extends Scene {
         }
 
         s.setDepth(s.y)
-        // this._drawAttackRange(s)
         this.lancer?.update(s)
+        // this._drawLancerRange()
 
         if (this._attacking && this._hitWindow && !this._hitConnected) {
             this._checkAttackHit(s)
@@ -322,6 +323,36 @@ export default class GameScene extends Scene {
         }
 
         return false
+    }
+
+    _drawLancerRange() {
+        this._lancerRangeGfx.clear()
+        if (!this.lancer?.isAlive() || !this.lancer.isAttacking()) return
+
+        const { x, y }  = this.lancer.sprite
+        const angle      = this.lancer.attackAngle
+        const reach      = this.lancer.lanceReach
+        const hitR       = this.lancer.lanceHitRadius
+        const tipX       = x + Math.cos(angle) * reach
+        const tipY       = y + Math.sin(angle) * reach
+
+        this._lancerRangeGfx.setDepth(this.lancer.sprite.depth + 1)
+
+        // Capsule shaft — thick line = visual approximation of the hit zone
+        this._lancerRangeGfx.lineStyle(hitR * 2, 0xff2222, 0.18)
+        this._lancerRangeGfx.lineBetween(x, y, tipX, tipY)
+
+        // Outline
+        this._lancerRangeGfx.lineStyle(1.5, 0xff2222, 0.75)
+        this._lancerRangeGfx.lineBetween(x, y, tipX, tipY)
+
+        // Round caps at both ends
+        this._lancerRangeGfx.fillStyle(0xff2222, 0.18)
+        this._lancerRangeGfx.fillCircle(x, y, hitR)
+        this._lancerRangeGfx.fillCircle(tipX, tipY, hitR)
+        this._lancerRangeGfx.lineStyle(1.5, 0xff2222, 0.75)
+        this._lancerRangeGfx.strokeCircle(x, y, hitR)
+        this._lancerRangeGfx.strokeCircle(tipX, tipY, hitR)
     }
 
     _drawAttackRange(sprite) {
