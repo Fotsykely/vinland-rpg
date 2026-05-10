@@ -9,8 +9,6 @@ const LANCER_PATH = 'Tiny Swords (Free Pack)/Units/Black Units/Lancer'
 const MAP_KEY = 'vinLand'
 const PLAYER_START_X = 1056
 const PLAYER_START_Y = 2300
-const LANCER_START_X = 1168
-const LANCER_START_Y = 2000
 const MAP_WIDTH = 30 * 64
 const MAP_HEIGHT = 40 * 64
 const UNIT_FRAME_WIDTH = 192
@@ -28,6 +26,16 @@ const ATTACK_RADIUS    = 24 // px radius of circular attack hitbox
 const DASH_SPEED       = 500  // px/s
 const DASH_DURATION    = 160  // ms
 const DASH_COOLDOWN    = 1000  // ms
+const WAVE_DELAY       = 4000  // ms between waves
+// All points inside the corridor (x: 960–1340, y: 1650–2540)
+const SPAWN_POINTS = [
+    { x: 1168, y: 2000 },  // north
+    { x: 1050, y: 1870 },  // far north
+    { x: 1290, y: 2020 },  // north-east
+    { x:  990, y: 2020 },  // north-west
+    { x: 1270, y: 2360 },  // south-east
+    { x:  990, y: 2440 },  // south
+]
 
 export default class GameScene extends Scene {
     _getConfig() {
@@ -96,7 +104,7 @@ export default class GameScene extends Scene {
         this._createAnimations()
         this._setupAttackState(s)
         this._setupTrees(s)
-        this._setupLancer(s)
+        this._setupWaves(s)
         this._setupMusic()
         this._muteKey  = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.M)
         this._dashKey  = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT)
@@ -139,25 +147,41 @@ export default class GameScene extends Scene {
         this.physics.add.collider(warriorSprite, this.treeGroup)
     }
 
-    _setupLancer(targetSprite) {
-        const lancerSprite = this.physics.add.sprite(LANCER_START_X, LANCER_START_Y, 'lancer-idle-sheet')
+    _setupWaves(targetSprite) {
+        this._enemies      = []
+        this._currentWave  = 0
+        this._waveActive   = false
+        this._wavePending  = false
+        this._waveTarget   = targetSprite
+        this._startNextWave()
+    }
+
+    _startNextWave() {
+        this._currentWave++
+        this._waveActive  = true
+        this._wavePending = false
+        const count  = Math.min(this._currentWave, SPAWN_POINTS.length)
+        const points = Phaser.Utils.Array.Shuffle([...SPAWN_POINTS]).slice(0, count)
+        points.forEach(({ x, y }) => this._spawnEnemy(x, y))
+        this.game.events.emit('wave-start', this._currentWave)
+    }
+
+    _spawnEnemy(x, y) {
+        const lancerSprite = this.physics.add.sprite(x, y, 'lancer-idle-sheet')
         lancerSprite.setScale(0.5)
         lancerSprite.setBodySize(20, 20)
         lancerSprite.body.setOffset(150, 210)
         lancerSprite.body.allowGravity = false
-
         this.physics.add.collider(lancerSprite, manager.getWallGroup(this, MAP_KEY))
         this.physics.add.collider(lancerSprite, this.treeGroup)
-
-        this.lancer = new Lancer(this, lancerSprite, {
-            maxLives: 2,
-            lives: 2,
+        const lancer = new Lancer(this, lancerSprite, {
+            maxLives: 2, lives: 2,
             moveSpeed: LANCER_SPEED,
             detectionRadius: LANCER_DETECTION_RADIUS,
             stopDistance: LANCER_STOP_DISTANCE,
-            target: targetSprite,
-            idleAnimKey:    'lancer-idle',
-            runAnimKey:     'lancer-run',
+            target: this._waveTarget,
+            idleAnimKey: 'lancer-idle',
+            runAnimKey:  'lancer-run',
             attackAnimKeys: {
                 right:     'lancer-attack-right',
                 downright: 'lancer-attack-downright',
@@ -166,8 +190,19 @@ export default class GameScene extends Scene {
                 up:        'lancer-attack-up',
             }
         })
-
         lancerSprite.anims.play('lancer-idle', true)
+        this._enemies.push(lancer)
+    }
+
+    _checkWaveClear() {
+        if (!this._waveActive || this._wavePending || this._enemies.length === 0) return
+        if (this._enemies.every(e => !e.isAlive())) {
+            this._waveActive  = false
+            this._wavePending = true
+            this._enemies     = []
+            this.game.events.emit('wave-clear', this._currentWave)
+            this.time.delayedCall(WAVE_DELAY, () => this._startNextWave())
+        }
     }
 
     _setupMusic() {
@@ -262,7 +297,8 @@ export default class GameScene extends Scene {
         }
 
         s.setDepth(s.y)
-        this.lancer?.update(s)
+        this._enemies.forEach(e => e.update(s))
+        this._checkWaveClear()
         // this._drawLancerRange()
 
         if (this._attacking && this._hitWindow && !this._hitConnected) {
@@ -345,32 +381,26 @@ export default class GameScene extends Scene {
 
     _drawLancerRange() {
         this._lancerRangeGfx.clear()
-        if (!this.lancer?.isAlive() || !this.lancer.isAttacking()) return
-
-        const { x, y }  = this.lancer.sprite
-        const angle      = this.lancer.attackAngle
-        const reach      = this.lancer.lanceReach
-        const hitR       = this.lancer.lanceHitRadius
-        const tipX       = x + Math.cos(angle) * reach
-        const tipY       = y + Math.sin(angle) * reach
-
-        this._lancerRangeGfx.setDepth(this.lancer.sprite.depth + 1)
-
-        // Capsule shaft — thick line = visual approximation of the hit zone
-        this._lancerRangeGfx.lineStyle(hitR * 2, 0xff2222, 0.18)
-        this._lancerRangeGfx.lineBetween(x, y, tipX, tipY)
-
-        // Outline
-        this._lancerRangeGfx.lineStyle(1.5, 0xff2222, 0.75)
-        this._lancerRangeGfx.lineBetween(x, y, tipX, tipY)
-
-        // Round caps at both ends
-        this._lancerRangeGfx.fillStyle(0xff2222, 0.18)
-        this._lancerRangeGfx.fillCircle(x, y, hitR)
-        this._lancerRangeGfx.fillCircle(tipX, tipY, hitR)
-        this._lancerRangeGfx.lineStyle(1.5, 0xff2222, 0.75)
-        this._lancerRangeGfx.strokeCircle(x, y, hitR)
-        this._lancerRangeGfx.strokeCircle(tipX, tipY, hitR)
+        for (const enemy of this._enemies) {
+            if (!enemy.isAlive() || !enemy.isAttacking()) continue
+            const { x, y } = enemy.sprite
+            const angle = enemy.attackAngle
+            const reach = enemy.lanceReach
+            const hitR  = enemy.lanceHitRadius
+            const tipX  = x + Math.cos(angle) * reach
+            const tipY  = y + Math.sin(angle) * reach
+            this._lancerRangeGfx.setDepth(enemy.sprite.depth + 1)
+            this._lancerRangeGfx.lineStyle(hitR * 2, 0xff2222, 0.18)
+            this._lancerRangeGfx.lineBetween(x, y, tipX, tipY)
+            this._lancerRangeGfx.lineStyle(1.5, 0xff2222, 0.75)
+            this._lancerRangeGfx.lineBetween(x, y, tipX, tipY)
+            this._lancerRangeGfx.fillStyle(0xff2222, 0.18)
+            this._lancerRangeGfx.fillCircle(x, y, hitR)
+            this._lancerRangeGfx.fillCircle(tipX, tipY, hitR)
+            this._lancerRangeGfx.lineStyle(1.5, 0xff2222, 0.75)
+            this._lancerRangeGfx.strokeCircle(x, y, hitR)
+            this._lancerRangeGfx.strokeCircle(tipX, tipY, hitR)
+        }
     }
 
     _drawAttackRange(sprite) {
@@ -391,17 +421,16 @@ export default class GameScene extends Scene {
     }
 
     _checkAttackHit(warriorSprite) {
-        if (!this.lancer?.isAlive()) return
-
         const facing = warriorSprite.flipX ? -1 : 1
-        const hitX = warriorSprite.x + facing * ATTACK_OFFSET
-        const hitY = warriorSprite.y
-
-        const dist = Math.hypot(hitX - this.lancer.sprite.x, hitY - this.lancer.sprite.y)
-        if (dist < ATTACK_RADIUS) {
-            this._hitConnected = true
-            const knockVx = facing * 340
-            this.lancer.receiveHit(1, knockVx, -120)
+        const hitX   = warriorSprite.x + facing * ATTACK_OFFSET
+        const hitY   = warriorSprite.y
+        for (const enemy of this._enemies) {
+            if (!enemy.isAlive()) continue
+            const dist = Math.hypot(hitX - enemy.sprite.x, hitY - enemy.sprite.y)
+            if (dist < ATTACK_RADIUS) {
+                this._hitConnected = true
+                enemy.receiveHit(1, facing * 340, -120)
+            }
         }
     }
 

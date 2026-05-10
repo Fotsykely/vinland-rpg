@@ -29,11 +29,33 @@ export default class UIScene extends Phaser.Scene {
             this._avatars.push(img)
         }
 
+        this._waveText = this.add.text(
+            this.scale.width / 2, this.scale.height / 2 - 60, '',
+            { fontSize: '36px', fontFamily: 'serif', color: '#f5d680', stroke: '#1a1a1a', strokeThickness: 5 }
+        ).setOrigin(0.5).setAlpha(0)
+
         this.game.events.on('player-health', this._onHealthChange, this)
+        this.game.events.on('wave-start', this._onWaveStart, this)
+        this.game.events.on('wave-clear', this._onWaveClear, this)
         this.events.once('shutdown', () => {
             this.game.events.off('player-health', this._onHealthChange, this)
+            this.game.events.off('wave-start', this._onWaveStart, this)
+            this.game.events.off('wave-clear', this._onWaveClear, this)
         })
     }
+
+    _showWaveText(text) {
+        this._waveText.setText(text).setAlpha(1)
+        this.tweens.killTweensOf(this._waveText)
+        this.tweens.add({
+            targets: this._waveText, alpha: 0,
+            delay: 1400, duration: 600,
+            ease: 'Sine.easeIn',
+        })
+    }
+
+    _onWaveStart(wave) { this._showWaveText(`WAVE  ${wave}`) }
+    _onWaveClear()     { this._showWaveText('CLEARED !') }
 
     _onHealthChange(lives) {
         this._avatars.forEach((img, i) => {
