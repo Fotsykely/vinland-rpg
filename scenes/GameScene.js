@@ -99,6 +99,13 @@ export default class GameScene extends Scene {
                 `${LANCER_PATH}/Lancer_${dir}_Attack.png`,
                 { frameWidth: LANCER_FRAME_WIDTH, frameHeight: LANCER_FRAME_HEIGHT })
         }
+        this.load.image('water-bg', 'Tiny Swords (Free Pack)/Terrain/Tileset/Water Background color.png')
+        this.load.spritesheet('water-foam', 'Tiny Swords (Free Pack)/Terrain/Tileset/Water Foam.png', {
+            frameWidth: 192, frameHeight: 192
+        })
+        this.load.spritesheet('water-rocks', 'Tiny Swords (Free Pack)/Terrain/Decorations/Rocks in the Water/Water Rocks_01.png', {
+            frameWidth: 64, frameHeight: 64
+        })
         this.load.spritesheet('dust', 'Tiny Swords (Free Pack)/Particle FX/Dust_02.png', {
             frameWidth: 64, frameHeight: 64
         })
@@ -119,6 +126,7 @@ export default class GameScene extends Scene {
         this._setupPlayer(s)
         this._setupWorld(s)
         this._createAnimations()
+        this._setupWater()
         this._setupAttackState(s)
         this._setupTrees(s)
         this._setupWaves(s)
@@ -157,6 +165,31 @@ export default class GameScene extends Scene {
         this._tutorialActive = true
         this.game.events.once('tutorial-done', () => { this._tutorialActive = false })
         this.scene.launch('TutorialScene')
+    }
+
+    _setupWater() {
+        this.add.tileSprite(MAP_WIDTH / 2, MAP_HEIGHT / 2, MAP_WIDTH, MAP_HEIGHT, 'water-bg')
+            .setDepth(-10)
+
+        const T = 64
+        // [col, row] positions in the water area around the grass island
+        const rockPositions = [
+            // left water strip
+            [2, 3], [1, 9], [3, 15], [2, 21],
+            // left beside corridor
+            [8, 28], [5, 34],
+            // right water strip
+            [29, 5], [29, 13], [29, 20],
+            // right beside corridor
+            [24, 30], [27, 37],
+            // bottom below corridor
+            [16, 41], [18, 43],
+        ]
+        rockPositions.forEach(([col, row], i) => {
+            const s = this.add.sprite((col + 0.5) * T, (row + 0.5) * T, 'water-rocks')
+            s.setDepth(-5)
+            s.anims.play({ key: 'water-rocks-anim', startFrame: Math.floor(Math.random() * 16) })
+        })
     }
 
     _setupTrees(warriorSprite) {
@@ -264,6 +297,8 @@ export default class GameScene extends Scene {
 
     _createAnimations() {
         Tree.createAnimation(this)
+        this._createAnimationFromSheet('water-foam-anim', 'water-foam', 6, -1)
+        this._createAnimationFromSheet('water-rocks-anim', 'water-rocks', 8, -1)
         this._createAnimationFromSheet('warrior-idle',    'warrior-idle-sheet',    8,  -1)
         this._createAnimationFromSheet('warrior-attack',  'warrior-attack-sheet',  10,  0)
         this._createAnimationFromSheet('warrior-attack2', 'warrior-attack2-sheet', 10,  0)
