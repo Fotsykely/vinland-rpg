@@ -218,7 +218,7 @@ export default class GameScene extends Scene {
 
     _setupWaves(targetSprite) {
         this._enemies         = []
-        this._currentWave     = 0
+        this._currentWave     = 1
         this._waveActive      = false
         this._wavePending     = false
         this._lastEnemyCount  = 0
@@ -227,7 +227,7 @@ export default class GameScene extends Scene {
     }
 
     _startNextWave() {
-        this._currentWave++
+        this._currentWave*=2
         this._waveActive  = true
         this._wavePending = false
         const count  = Math.min(this._currentWave, SPAWN_POINTS.length)
