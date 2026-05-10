@@ -21,8 +21,8 @@ const LANCER_SPEED = 95
 const BGM_KEY   = 'game-bgm'
 const BGM_PATH  = 'audio/bgm/sonatina_letsadventure_1ATaleForTheJourney.wav'
 const MAX_LIVES        = 3
-const ATTACK_OFFSET    = 28 // px ahead of player center where attack hitbox is placed
-const ATTACK_RADIUS    = 24 // px radius of circular attack hitbox
+const ATTACK_OFFSET    = 36 // px ahead of player center where attack hitbox is placed
+const ATTACK_RADIUS    = 32 // px radius of circular attack hitbox
 const DASH_SPEED          = 500   // px/s
 const DASH_DURATION       = 160   // ms
 const DASH_COOLDOWN       = 1000  // ms
@@ -513,7 +513,7 @@ export default class GameScene extends Scene {
         this._checkWaveClear()
         this._emitNearestEnemyDir(s)
         // this._drawLancerRange()
-        this._drawAttackRange(s)
+        // this._drawAttackRange(s)
 
         if (this._attacking && this._hitWindow && !this._hitConnected) {
             this._checkAttackHit(s)
@@ -643,9 +643,8 @@ export default class GameScene extends Scene {
     _drawAttackRange(sprite) {
         this._attackRangeGfx.clear()
         if (!this._attacking) return
-        const facing = sprite.flipX ? -1 : 1
-        const hitX   = sprite.x + facing * ATTACK_OFFSET
-        const hitY   = sprite.y
+        const hitX = sprite.x + this._lastDir.x * ATTACK_OFFSET
+        const hitY = sprite.y + this._lastDir.y * ATTACK_OFFSET
         // Orange = wind-up, red = hit window active
         const color     = this._hitWindow ? 0xff2222 : 0xff8800
         const fillAlpha = this._hitWindow ? 0.25     : 0.10
@@ -658,15 +657,14 @@ export default class GameScene extends Scene {
     }
 
     _checkAttackHit(warriorSprite) {
-        const facing = warriorSprite.flipX ? -1 : 1
-        const hitX   = warriorSprite.x + facing * ATTACK_OFFSET
-        const hitY   = warriorSprite.y
+        const hitX = warriorSprite.x + this._lastDir.x * ATTACK_OFFSET
+        const hitY = warriorSprite.y + this._lastDir.y * ATTACK_OFFSET
         for (const enemy of this._enemies) {
             if (!enemy.isAlive()) continue
             const dist = Math.hypot(hitX - enemy.sprite.x, hitY - enemy.sprite.y)
             if (dist < ATTACK_RADIUS) {
                 this._hitConnected = true
-                enemy.receiveHit(1, facing * 340, -120)
+                enemy.receiveHit(1, this._lastDir.x * 340, -120)
             }
         }
     }
