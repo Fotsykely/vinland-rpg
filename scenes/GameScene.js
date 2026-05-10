@@ -1,4 +1,4 @@
-import { Scene, manager } from '@tialops/maki'
+import { Scene } from '@tialops/maki'
 import musicManager from '../managers/audio/MusicManager.js'
 import sfxManager from '../managers/audio/SfxManager.js'
 import Lancer from '../entities/enemies/Lancer.js'
@@ -73,8 +73,10 @@ export default class GameScene extends Scene {
         this._makiPlayers = []   // reset before super.preload to avoid duplicate sprites on restart
         super.preload()
         this.warrior = this.maki.player('warrior')
-        manager.map(this, MAP_KEY)
-        manager.preload(this)
+        this.load.tilemapTiledJSON(MAP_KEY, 'assets/maps/vinLand.json')
+        this.load.image('tileset-tiny-swords', 'assets/rooms/tiny_swords.png')
+        this.load.image('furn-monastery', 'Tiny Swords (Free Pack)/Buildings/Black Buildings/Monastery.png')
+        this.load.image('furn-rock',      'Tiny Swords (Free Pack)/Terrain/Decorations/Rocks/Rock2.png')
 
         this.load.spritesheet('warrior-idle-sheet', `${WARRIOR_PATH}/Warrior_Idle.png`, {
             frameWidth: UNIT_FRAME_WIDTH, frameHeight: UNIT_FRAME_HEIGHT
@@ -120,7 +122,12 @@ export default class GameScene extends Scene {
 
     create() {
         super.create()
-        manager.create(this)
+
+        const map    = this.make.tilemap({ key: MAP_KEY })
+        const tileset = map.addTilesetImage('tiny_swords', 'tileset-tiny-swords')
+        map.createLayer('floor',        tileset, 0, 0).setDepth(0)
+        map.createLayer('decorations',  tileset, 0, 0).setDepth(2)
+        this._map = map
 
         const s = this.warrior.sprite
         this._setupPlayer(s)
@@ -236,7 +243,7 @@ export default class GameScene extends Scene {
         lancerSprite.setBodySize(20, 20)
         lancerSprite.body.setOffset(150, 210)
         lancerSprite.body.allowGravity = false
-        this.physics.add.collider(lancerSprite, manager.getWallGroup(this, MAP_KEY))
+        this.physics.add.collider(lancerSprite, this._wallGroup)
         this.physics.add.collider(lancerSprite, this.treeGroup)
         const lancer = new Lancer(this, lancerSprite, {
             maxLives: 2, lives: 2,
@@ -297,12 +304,36 @@ export default class GameScene extends Scene {
     }
 
     _setupWorld(sprite) {
-        this.physics.add.collider(sprite, manager.getWallGroup(this, MAP_KEY))
+        this._wallGroup = this.physics.add.staticGroup()
+        this._map.getObjectLayer('collisions').objects.forEach(obj => {
+            const rect = this.add.rectangle(
+                obj.x + obj.width / 2, obj.y + obj.height / 2,
+                obj.width, obj.height
+            ).setVisible(false)
+            this.physics.add.existing(rect, true)
+            this._wallGroup.add(rect)
+        })
+        this.physics.add.collider(sprite, this._wallGroup)
+
+        this._setupFurniture(this._map)
+
         this.cameras.main.setBounds(0, 0, MAP_WIDTH, MAP_HEIGHT)
         this.cameras.main.startFollow(sprite, true, 0.1, 0.1)
+    }
 
-        this.children.list.forEach(child => {
-            if (child.depth === 1 && child.type === 'Image') child.setDepth(child.y)
+    _setupFurniture(map) {
+        const SRC_KEY = {
+            'Tiny Swords (Free Pack)/Buildings/Black Buildings/Monastery.png': 'furn-monastery',
+            'Tiny Swords (Free Pack)/Terrain/Decorations/Rocks/Rock2.png':     'furn-rock',
+            'Tiny Swords (Free Pack)/Terrain/Tileset/Water Background color.png': 'water-bg',
+        }
+        map.getObjectLayer('furniture').objects.forEach(obj => {
+            const src = obj.properties?.find(p => p.name === 'src')?.value
+            const key = SRC_KEY[src]
+            if (!key) return
+            const img = this.add.image(obj.x + obj.width / 2, obj.y + obj.height / 2, key)
+            img.setDisplaySize(obj.width, obj.height)
+            img.setDepth(img.y)
         })
     }
 
