@@ -92,6 +92,9 @@ export default class GameScene extends Scene {
         this.load.image('furn-monastery', 'Tiny Swords (Free Pack)/Buildings/Black Buildings/Monastery.png')
         this.load.image('furn-rock',      'Tiny Swords (Free Pack)/Terrain/Decorations/Rocks/Rock2.png')
         this.load.image('tileset-bushes', 'Tiny Swords (Free Pack)/Terrain/Decorations/Bushes/Bushe1.png')
+        this.load.spritesheet('bush-sheet', 'Tiny Swords (Free Pack)/Terrain/Decorations/Bushes/Bushe1.png', {
+            frameWidth: 128, frameHeight: 128
+        })
 
         this.load.image('meat', MEAT_PATH)
         this.load.spritesheet('warrior-idle-sheet', `${WARRIOR_PATH}/Warrior_Idle.png`, {
@@ -142,14 +145,14 @@ export default class GameScene extends Scene {
         const map     = this.make.tilemap({ key: MAP_KEY })
         const tileset = map.addTilesetImage('tiny_swords', 'tileset-tiny-swords')
         const tsBushes = map.addTilesetImage('bushes_1', 'tileset-bushes')
-        map.createLayer('floor',       tileset,              0, 0).setDepth(0)
-        map.createLayer('decorations', [tileset, tsBushes],  0, 0).setDepth(2)
+        map.createLayer('floor', tileset, 0, 0).setDepth(0)
         this._map = map
 
         const s = this.warrior.sprite
         this._setupPlayer(s)
         this._setupWorld(s)
         this._createAnimations()
+        this._setupBushes(map)
         this._setupWater()
         this._setupAttackState(s)
         this._setupTrees(s)
@@ -395,8 +398,37 @@ export default class GameScene extends Scene {
         })
     }
 
+    _setupBushes(map) {
+        const layer = map.getLayer('decorations')
+        if (!layer) return
+        const tileW = map.tileWidth   // 64
+        const tileH = map.tileHeight  // 64
+
+        layer.data.forEach((row, rowIdx) => {
+            row.forEach((tile, colIdx) => {
+                if (!tile || tile.index <= 0) return
+                // Bottom of the tile cell = the ground contact point for Y-sorting
+                const baseY = (rowIdx + 1) * tileH
+                // Bush is 128×128; anchor bottom-center to the cell's bottom edge
+                const x = colIdx * tileW + 64   // center of the 128px wide tile
+                const y = baseY - 64            // center of the 128px tall tile
+                const sprite = this.add.sprite(x, y, 'bush-sheet')
+                sprite.setDepth(baseY)
+                sprite.play('bush-anim')
+            })
+        })
+    }
+
     _createAnimations() {
         Tree.createAnimation(this)
+        if (!this.anims.exists('bush-anim')) {
+            this.anims.create({
+                key: 'bush-anim',
+                frames: this.anims.generateFrameNumbers('bush-sheet', { start: 0, end: 7 }),
+                frameRate: 10,
+                repeat: -1,
+            })
+        }
         this._createAnimationFromSheet('water-foam-anim', 'water-foam', 6, -1)
         this._createAnimationFromSheet('water-rocks-anim', 'water-rocks', 8, -1)
         this._createAnimationFromSheet('warrior-idle',    'warrior-idle-sheet',    8,  -1)
@@ -481,6 +513,7 @@ export default class GameScene extends Scene {
         this._checkWaveClear()
         this._emitNearestEnemyDir(s)
         // this._drawLancerRange()
+        this._drawAttackRange(s)
 
         if (this._attacking && this._hitWindow && !this._hitConnected) {
             this._checkAttackHit(s)
