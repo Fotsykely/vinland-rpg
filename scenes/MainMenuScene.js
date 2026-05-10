@@ -23,8 +23,8 @@ export default class MainMenuScene extends Phaser.Scene {
 
         this.add.rectangle(0, 0, W, H, 0x0d1117).setOrigin(0)
 
-        this.add.text(cx, cy - 170, 'MAKI  RPG', {
-            fontSize: '52px', fontFamily: 'serif',
+        this.add.text(cx, cy - 170, 'THE MAKI KNIGHT', {
+            fontSize: '48px', fontFamily: 'serif',
             color: '#f5d680', stroke: '#1a1a1a', strokeThickness: 7,
         }).setOrigin(0.5)
 
