@@ -47,8 +47,9 @@ export default class TutorialScene extends Phaser.Scene {
         }).setOrigin(0.5)
 
         const entries = [
-            ['↑  ↓  ←  →', 'Move'],
+            ['↑  ↓  ←  →',  'Move'],
             ['SPACE',       'Attack'],
+            ['SHIFT',       'Dash'],
         ]
         entries.forEach(([key, action], i) => {
             const y = cy + i * 50
