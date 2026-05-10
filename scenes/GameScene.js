@@ -62,6 +62,8 @@ const SPAWN_POINTS = [
 ]
 
 export default class GameScene extends Scene {
+    constructor() { super({ key: 'GameScene' }) }
+
     _getConfig() {
         return {
             sprite: {
@@ -162,6 +164,7 @@ export default class GameScene extends Scene {
         this._muteKey  = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.M)
         this._dashKey  = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT)
         this._guardKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E)
+        this._pauseKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC)
         this._wasMoving  = false
         this._dashing    = false
         this._dashReady  = true
@@ -502,6 +505,12 @@ export default class GameScene extends Scene {
         if (this._tutorialActive || this._gameOver) return
         const s = this.warrior.sprite
         const keys = this.warrior.keys
+
+        if (Phaser.Input.Keyboard.JustDown(this._pauseKey)) {
+            this.scene.pause()
+            this.scene.launch('PauseScene')
+            return
+        }
 
         if (Phaser.Input.Keyboard.JustDown(this._muteKey)) {
             musicManager.toggleMute()
