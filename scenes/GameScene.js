@@ -70,6 +70,7 @@ export default class GameScene extends Scene {
     }
 
     preload() {
+        this._makiPlayers = []   // reset before super.preload to avoid duplicate sprites on restart
         super.preload()
         this.warrior = this.maki.player('warrior')
         manager.map(this, MAP_KEY)
