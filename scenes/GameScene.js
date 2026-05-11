@@ -89,8 +89,8 @@ export default class GameScene extends Scene {
         this._makiPlayers = []   // reset before super.preload to avoid duplicate sprites on restart
         super.preload()
         this.warrior = this.maki.player('warrior')
-        this.load.tilemapTiledJSON(MAP_KEY, 'assets/maps/vinLand.json')
-        this.load.image('tileset-tiny-swords', 'assets/rooms/tiny_swords.png')
+        this.load.tilemapTiledJSON(MAP_KEY, 'maps/vinLand.json')
+        this.load.image('tileset-tiny-swords', 'rooms/tiny_swords.png')
         this.load.image('furn-monastery', 'Tiny Swords (Free Pack)/Buildings/Black Buildings/Monastery.png')
         this.load.image('furn-rock',      'Tiny Swords (Free Pack)/Terrain/Decorations/Rocks/Rock2.png')
         this.load.image('tileset-bushes', 'Tiny Swords (Free Pack)/Terrain/Decorations/Bushes/Bushe1.png')

@@ -28,7 +28,7 @@ export default class MainMenuScene extends Phaser.Scene {
             color: '#f5d680', stroke: '#1a1a1a', strokeThickness: 7,
         }).setOrigin(0.5)
 
-        this.add.text(cx, cy - 115, 'by Ando Razafy', {
+        this.add.text(cx, cy - 115, 'by fotsykely', {
             fontSize: '15px', fontFamily: 'serif', color: '#666666',
         }).setOrigin(0.5)
 
